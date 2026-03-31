@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, NavLink } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 import Login from './pages/auth/Login';
@@ -44,19 +45,60 @@ const NAV_GROUPS = [
 
 function Layout({ children }: { children: React.ReactNode }) {
   const { session } = useAuth();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
   };
 
+  const closeSidebar = () => setIsSidebarOpen(false);
+  const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
+
   return (
     <div className="min-h-screen bg-surface font-body text-on-surface">
-      {/* Sidebar (Dark Premium) */}
-      <aside className="fixed left-0 top-0 h-screen w-64 z-40 bg-on-secondary-fixed flex flex-col py-6 gap-2 shadow-2xl">
-        <div className="px-6 mb-8">
-          <h1 className="text-white text-2xl font-black">El Molino</h1>
-          <p className="font-headline uppercase tracking-widest text-[10px] font-bold text-slate-400 mt-1">Residencias Culturales</p>
+      {/* Mobile Top Navigation Bar */}
+      <header className="md:hidden fixed top-0 left-0 right-0 h-16 bg-on-secondary-fixed z-30 flex items-center px-4 shadow-md">
+        <button
+          onClick={toggleSidebar}
+          className="text-white p-2 hover:bg-white/10 rounded-lg transition-colors focus:outline-none"
+          aria-label="Abrir menú"
+        >
+          <span className="material-symbols-outlined">menu</span>
+        </button>
+        <div className="ml-4 flex flex-col">
+          <h1 className="text-white text-lg font-black leading-tight">El Molino</h1>
+          <p className="font-headline uppercase tracking-widest text-[8px] font-bold text-slate-400">Residencias</p>
         </div>
+      </header>
+
+      {/* Mobile Sidebar Overlay */}
+      {isSidebarOpen && (
+        <div
+          className="md:hidden fixed inset-0 bg-black/50 z-40 transition-opacity"
+          onClick={closeSidebar}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Sidebar (Dark Premium) */}
+      <aside
+        className={`fixed left-0 top-0 h-screen w-64 z-50 bg-on-secondary-fixed flex flex-col py-6 gap-2 shadow-2xl transition-transform duration-300 ease-in-out md:translate-x-0 ${
+          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <div className="px-6 mb-8 flex justify-between items-center md:block">
+          <div>
+            <h1 className="text-white text-2xl font-black">El Molino</h1>
+            <p className="font-headline uppercase tracking-widest text-[10px] font-bold text-slate-400 mt-1">Residencias Culturales</p>
+          </div>
+          <button
+            onClick={closeSidebar}
+            className="md:hidden text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors"
+          >
+            <span className="material-symbols-outlined text-xl">close</span>
+          </button>
+        </div>
+
         <nav className="flex-1 overflow-y-auto no-scrollbar">
           <div className="space-y-4">
             {NAV_GROUPS.map((group, groupIdx) => (
@@ -70,6 +112,7 @@ function Layout({ children }: { children: React.ReactNode }) {
                   <NavLink
                     key={item.path}
                     to={item.path}
+                    onClick={closeSidebar}
                     className={({ isActive }) =>
                       `flex items-center gap-3 px-4 py-3 mx-2 rounded-lg transition-all duration-200 active:translate-x-1 ${
                         isActive
@@ -85,6 +128,7 @@ function Layout({ children }: { children: React.ReactNode }) {
             ))}
           </div>
         </nav>
+
         <div className="px-4 mt-auto">
           <div className="border-t border-white/10 pt-4">
             <p className="text-xs text-slate-500 mb-4 truncate text-center font-semibold tracking-wider font-headline">{session?.user?.email}</p>
@@ -99,8 +143,8 @@ function Layout({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Main content (scrolling area) */}
-      <main className="ml-64 h-screen overflow-y-auto flex flex-col">
-        <div className="p-8 flex-1 flex flex-col max-w-7xl mx-auto w-full">
+      <main className="md:ml-64 pt-16 md:pt-0 h-screen overflow-y-auto flex flex-col transition-all duration-300">
+        <div className="p-4 md:p-8 flex-1 flex flex-col max-w-7xl mx-auto w-full">
           {children}
         </div>
       </main>
