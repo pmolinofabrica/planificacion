@@ -15,18 +15,31 @@ import CapacitacionesDispositivoPage from './pages/modules/CapacitacionesDisposi
 import SaldosPage from './pages/modules/SaldosPage';
 import { supabase } from './lib/supabase';
 
-const NAV_ITEMS = [
-  { path: '/convocatorias', label: 'Convocatorias' },
-  { path: '/planificacion', label: 'Planificación' },
-  { path: '/agentes', label: 'Agentes' },
-  { path: '/inasistencias', label: 'Inasistencias' },
-  { path: '/descansos', label: 'Descansos' },
-  { path: '/certificados', label: 'Certificados' },
-  { path: '/capacitaciones', label: 'Capacitaciones' },
-  { path: '/caps_dispositivos', label: 'Caps Disp' },
-  { path: '/dispositivos', label: 'Dispositivos' },
-  { path: '/turnos', label: 'Turnos' },
-  { path: '/saldos', label: 'Saldos' },
+// Menu grouped according to requirements
+const NAV_GROUPS = [
+  // Group 1: Planificación, Convocatoria, Descansos, Saldos
+  [
+    { path: '/planificacion', label: 'Planificación' },
+    { path: '/convocatorias', label: 'Convocatorias' },
+    { path: '/descansos', label: 'Descansos' },
+    { path: '/saldos', label: 'Saldos' },
+  ],
+  // Group 2: Inasistencias, Certificados
+  [
+    { path: '/inasistencias', label: 'Inasistencias' },
+    { path: '/certificados', label: 'Certificados' },
+  ],
+  // Group 3: Capacitaciones, Caps Disp
+  [
+    { path: '/capacitaciones', label: 'Capacitaciones' },
+    { path: '/caps_dispositivos', label: 'Caps Disp' },
+  ],
+  // Group 4: Dispositivos, Turnos, Agentes
+  [
+    { path: '/dispositivos', label: 'Dispositivos' },
+    { path: '/turnos', label: 'Turnos' },
+    { path: '/agentes', label: 'Agentes' },
+  ],
 ];
 
 function Layout({ children }: { children: React.ReactNode }) {
@@ -45,21 +58,30 @@ function Layout({ children }: { children: React.ReactNode }) {
           <p className="font-headline uppercase tracking-widest text-[10px] font-bold text-slate-400 mt-1">Residencias Culturales</p>
         </div>
         <nav className="flex-1 overflow-y-auto no-scrollbar">
-          <div className="space-y-1">
-            {NAV_ITEMS.map((item) => (
-              <NavLink
-                key={item.path}
-                to={item.path}
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-4 py-3 mx-2 rounded-lg transition-all duration-200 active:translate-x-1 ${
-                    isActive
-                      ? 'text-white bg-gradient-to-r from-primary to-primary-container shadow-md'
-                      : 'text-slate-400 hover:text-white hover:bg-white/5'
-                  }`
-                }
+          <div className="space-y-4">
+            {NAV_GROUPS.map((group, groupIdx) => (
+              <div
+                key={groupIdx}
+                className={`flex flex-col gap-1 pb-4 ${
+                  groupIdx !== NAV_GROUPS.length - 1 ? 'border-b border-white/10' : ''
+                }`}
               >
-                <span className="font-headline uppercase tracking-widest text-[10px] font-bold">{item.label}</span>
-              </NavLink>
+                {group.map((item) => (
+                  <NavLink
+                    key={item.path}
+                    to={item.path}
+                    className={({ isActive }) =>
+                      `flex items-center gap-3 px-4 py-3 mx-2 rounded-lg transition-all duration-200 active:translate-x-1 ${
+                        isActive
+                          ? 'text-white bg-gradient-to-r from-primary to-primary-container shadow-md'
+                          : 'text-slate-400 hover:text-white hover:bg-white/5'
+                      }`
+                    }
+                  >
+                    <span className="font-headline uppercase tracking-widest text-[10px] font-bold">{item.label}</span>
+                  </NavLink>
+                ))}
+              </div>
             ))}
           </div>
         </nav>
