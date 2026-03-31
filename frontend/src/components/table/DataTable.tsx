@@ -82,10 +82,19 @@ export default function DataTable<T extends object>(props: DataTableProps<T>) {
         const originalValue = row._original ? row._original[field] : undefined;
         let typedValue: unknown = rawValue;
 
-        // Coerce to original type
-        if (typeof originalValue === 'number') typedValue = rawValue === '' ? null : Number(rawValue);
-        if (typeof originalValue === 'boolean') typedValue = rawValue === 'true';
-        if (originalValue === null && rawValue === '') typedValue = null;
+        // Ensure proper boolean coercing even if originalValue is undefined/null initially
+        // but we know it's meant to be boolean because rawValue is strictly 'true' or 'false' from checkbox
+        if (rawValue === 'true') {
+           typedValue = true;
+        } else if (rawValue === 'false') {
+           typedValue = false;
+        } else if (typeof originalValue === 'number') {
+           typedValue = rawValue === '' ? null : Number(rawValue);
+        } else if (typeof originalValue === 'boolean') {
+           typedValue = rawValue === 'true';
+        } else if (originalValue === null && rawValue === '') {
+           typedValue = null;
+        }
 
         const updatedData = { ...row.data, [field]: typedValue };
         const isModified = row._status === 'new'
