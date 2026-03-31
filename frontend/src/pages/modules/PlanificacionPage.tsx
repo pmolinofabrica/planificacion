@@ -38,7 +38,6 @@ export default function PlanificacionPage() {
   const [error, setError] = useState('');
   const [refreshKey, setRefreshKey] = useState(Date.now());
   const [filtroMes, setFiltroMes] = useState(currentMonth);
-  const [filtroAnio, setFiltroAnio] = useState(currentYear);
 
   // Catálogos para los selectores
   const [diasOptions, setDiasOptions] = useState<{value: number, label: string}[]>([]);
@@ -53,7 +52,7 @@ export default function PlanificacionPage() {
       const { data: diasRes, error: errDias } = await supabase
         .from('dias')
         .select('id_dia, fecha, es_feriado')
-        .eq('anio', filtroAnio)
+        .eq('anio', currentYear)
         .eq('mes', filtroMes)
         .order('fecha');
       if (errDias) throw errDias;
@@ -102,7 +101,7 @@ export default function PlanificacionPage() {
     } finally {
       setLoading(false);
     }
-  }, [filtroMes, filtroAnio]);
+  }, [filtroMes]);
 
   useEffect(() => {
     fetchData();
@@ -147,15 +146,6 @@ export default function PlanificacionPage() {
           >
             {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
               <option key={m} value={m}>Mes {m}</option>
-            ))}
-          </select>
-          <select 
-            value={filtroAnio} 
-            onChange={(e) => setFiltroAnio(Number(e.target.value))}
-            className="border border-gray-300 rounded px-3 py-1.5 text-sm bg-white focus:ring-1 focus:ring-blue-400"
-          >
-             {[currentYear - 2, currentYear - 1, currentYear, currentYear + 1].map(y => (
-              <option key={y} value={y}>{y}</option>
             ))}
           </select>
         </div>

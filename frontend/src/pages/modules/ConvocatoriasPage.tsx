@@ -53,7 +53,6 @@ export default function ConvocatoriasPage() {
   const [refreshKey, setRefreshKey] = useState(Date.now());
   const [agentes, setAgentes] = useState<Agente[]>([]);
   const [filtroMes, setFiltroMes] = useState(currentMonth);
-  const [filtroAnio, setFiltroAnio] = useState(currentYear);
 
   // Buscador de planificaciones
   const [buscarDia, setBuscarDia] = useState<number | ''>('');
@@ -85,7 +84,7 @@ export default function ConvocatoriasPage() {
       supabase
         .from('vista_convocatoria_completa')
         .select('*')
-        .eq('anio', filtroAnio)
+        .eq('anio', currentYear)
         .eq('mes', filtroMes)
         .order('fecha_turno'),
       supabase
@@ -104,7 +103,7 @@ export default function ConvocatoriasPage() {
     }
     setRefreshKey(Date.now());
     setLoading(false);
-  }, [filtroMes, filtroAnio]);
+  }, [filtroMes]);
 
   useEffect(() => { fetchConvocatorias(); }, [fetchConvocatorias]);
 
@@ -209,11 +208,6 @@ export default function ConvocatoriasPage() {
           <select value={filtroMes} onChange={(e) => setFiltroMes(Number(e.target.value))} className="bg-surface-container-lowest shadow-sm px-3 py-1.5 rounded-lg border border-outline-variant/10 text-xs font-bold text-slate-700 hover:bg-surface-container-low transition-colors outline-none focus:ring-1 focus:ring-primary font-body">
             {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
               <option key={m} value={m}>Mes {m}</option>
-            ))}
-          </select>
-          <select value={filtroAnio} onChange={(e) => setFiltroAnio(Number(e.target.value))} className="bg-surface-container-lowest shadow-sm px-3 py-1.5 rounded-lg border border-outline-variant/10 text-xs font-bold text-slate-700 hover:bg-surface-container-low transition-colors outline-none focus:ring-1 focus:ring-primary font-body">
-            {[currentYear - 1, currentYear, currentYear + 1].map(y => (
-              <option key={y} value={y}>{y}</option>
             ))}
           </select>
         </div>

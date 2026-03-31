@@ -39,8 +39,8 @@ export default function InasistenciasPage() {
   const [refreshKey, setRefreshKey] = useState(Date.now());
   
   const currentDate = new Date();
+  const currentYear = currentDate.getFullYear();
   const [filtroMes, setFiltroMes] = useState(currentDate.getMonth() + 1);
-  const [filtroAnio, setFiltroAnio] = useState(currentDate.getFullYear());
 
   const fetchInasistencias = useCallback(async () => {
     setLoading(true);
@@ -48,7 +48,7 @@ export default function InasistenciasPage() {
     const { data: rows, error: err } = await supabase
       .from('vista_inasistencias_completa')
       .select('*')
-      .eq('anio', filtroAnio)
+      .eq('anio', currentYear)
       .eq('mes', filtroMes)
       .order('fecha_inasistencia', { ascending: false });
 
@@ -59,7 +59,7 @@ export default function InasistenciasPage() {
       setRefreshKey(Date.now());
     }
     setLoading(false);
-  }, [filtroMes, filtroAnio]);
+  }, [filtroMes]);
 
   useEffect(() => {
     fetchInasistencias();
@@ -113,15 +113,6 @@ export default function InasistenciasPage() {
           >
             {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
               <option key={m} value={m}>Mes {m}</option>
-            ))}
-          </select>
-          <select 
-            value={filtroAnio} 
-            onChange={(e) => setFiltroAnio(Number(e.target.value))}
-            className="border border-gray-300 rounded px-3 py-1.5 text-sm bg-white"
-          >
-            {[currentDate.getFullYear() - 1, currentDate.getFullYear(), currentDate.getFullYear() + 1].map(y => (
-              <option key={y} value={y}>{y}</option>
             ))}
           </select>
         </div>

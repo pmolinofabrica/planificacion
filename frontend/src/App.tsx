@@ -31,7 +31,6 @@ const NAV_ITEMS = [
 
 function Layout({ children }: { children: React.ReactNode }) {
   const { session } = useAuth();
-  const userName = session?.user?.email?.split('@')[0] || 'U';
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -77,23 +76,8 @@ function Layout({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      {/* TopAppBar (Glassmorphism) */}
-      <header className="fixed top-0 right-0 left-64 h-14 glass-header z-30 flex items-center justify-between px-8 font-headline antialiased text-sm tracking-tight border-b border-outline-variant/10 shadow-sm">
-        <div className="flex items-center gap-4 flex-1">
-          {/* Breadcrumbs placeholder or global search space */}
-        </div>
-        <div className="flex items-center gap-3">
-          <button className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors rounded-full active:scale-95">
-            <span className="material-symbols-outlined text-xl">notifications</span>
-          </button>
-          <div className="h-8 w-8 rounded-full overflow-hidden ml-2 flex items-center justify-center bg-primary text-white font-bold text-sm ring-2 ring-primary-fixed-dim/50 shadow-md">
-            {userName.charAt(0).toUpperCase()}
-          </div>
-        </div>
-      </header>
-
-      {/* Main content */}
-      <main className="ml-64 pt-14 min-h-screen flex flex-col">
+      {/* Main content (scrolling area) */}
+      <main className="ml-64 h-screen overflow-y-auto flex flex-col">
         <div className="p-8 flex-1 flex flex-col max-w-7xl mx-auto w-full">
           {children}
         </div>

@@ -109,8 +109,8 @@ export default function SaldosPage() {
                 <th className="px-4 py-3 font-semibold border-b text-center" title="Horas por cronograma planificado">Total Hs</th>
                 <th className="px-4 py-3 font-semibold border-b text-center text-blue-800 bg-blue-50" title="Objetivo local">Obj. Mensual 48h</th>
                 <th className="px-4 py-3 font-semibold border-b text-center text-blue-800 bg-blue-50">Dif. 48h</th>
-                <th className="px-4 py-3 font-semibold border-b text-center text-purple-800 bg-purple-50">Obj. Mensual 12w</th>
-                <th className="px-4 py-3 font-semibold border-b text-center text-purple-800 bg-purple-50">Dif. 12w</th>
+                <th className="px-4 py-3 font-semibold border-b text-center text-purple-800 bg-purple-50">Obj. Mensual 12</th>
+                <th className="px-4 py-3 font-semibold border-b text-center text-purple-800 bg-purple-50">Dif. 12</th>
                 <th className="px-4 py-3 font-semibold border-b text-center">Mañana</th>
                 <th className="px-4 py-3 font-semibold border-b text-center">Tarde</th>
                 <th className="px-4 py-3 font-semibold border-b text-center">Finde</th>
@@ -123,14 +123,14 @@ export default function SaldosPage() {
                   <td className="px-4 py-2 font-medium">{row.residente} <span className="text-gray-400 font-normal">({row.dni})</span></td>
                   <td className="px-4 py-2 text-center text-gray-600 font-medium">{row.total_horas_convocadas}</td>
                   
-                  <td className="px-4 py-2 text-center font-bold bg-blue-50 text-blue-700">{row.objetivo_mensual_48}</td>
+                  <td className="px-4 py-2 text-center font-bold bg-blue-50 text-blue-700">{Math.round(row.objetivo_mensual_48 || 0)}</td>
                   <td className={`px-4 py-2 text-center font-bold ${row.diferencia_saldo_48 < 0 ? 'text-red-500' : 'text-green-600'}`}>
-                    {row.diferencia_saldo_48 > 0 ? '+' : ''}{row.diferencia_saldo_48}
+                    {row.diferencia_saldo_48 > 0 ? '+' : ''}{Math.round(row.diferencia_saldo_48 || 0)}
                   </td>
                   
-                  <td className="px-4 py-2 text-center font-bold bg-purple-50 text-purple-700">{row.objetivo_mensual_12w}</td>
+                  <td className="px-4 py-2 text-center font-bold bg-purple-50 text-purple-700">{Math.round(row.objetivo_mensual_12w || 0)}</td>
                   <td className={`px-4 py-2 text-center font-bold ${row.diferencia_saldo_12w < 0 ? 'text-red-500' : 'text-green-600'}`}>
-                    {row.diferencia_saldo_12w > 0 ? '+' : ''}{row.diferencia_saldo_12w}
+                    {row.diferencia_saldo_12w > 0 ? '+' : ''}{Math.round(row.diferencia_saldo_12w || 0)}
                   </td>
                   
                   <td className="px-4 py-2 text-center text-gray-500">{row.horas_manana}</td>
