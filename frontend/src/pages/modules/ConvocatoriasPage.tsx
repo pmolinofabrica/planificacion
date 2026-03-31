@@ -194,19 +194,24 @@ export default function ConvocatoriasPage() {
   ], [agentesOptions]);
 
   return (
-    <div>
-      <div className="mb-4 flex flex-col md:flex-row md:items-end justify-between gap-4">
+    <div className="flex flex-col h-full">
+      <div className="px-2 py-2 flex flex-col md:flex-row md:items-end justify-between gap-4 shrink-0 mb-4">
         <div>
-          <h2 className="text-xl font-bold text-gray-800">Convocatorias</h2>
-          <p className="text-sm text-gray-500">Filtrado por mes/año. Selectores cargados en memoria.</p>
+          <h2 className="text-3xl font-headline font-extrabold tracking-tighter text-on-surface">Convocatorias</h2>
+          <div className="flex items-center gap-2 mt-1 text-slate-500 text-xs font-body">
+            <span className="material-symbols-outlined text-sm">home</span>
+            <span>Dashboard</span>
+            <span>/</span>
+            <span className="font-semibold text-primary">Convocatorias</span>
+          </div>
         </div>
         <div className="flex gap-2">
-          <select value={filtroMes} onChange={(e) => setFiltroMes(Number(e.target.value))} className="border border-gray-300 rounded px-3 py-1.5 text-sm bg-white">
+          <select value={filtroMes} onChange={(e) => setFiltroMes(Number(e.target.value))} className="bg-surface-container-lowest shadow-sm px-3 py-1.5 rounded-lg border border-outline-variant/10 text-xs font-bold text-slate-700 hover:bg-surface-container-low transition-colors outline-none focus:ring-1 focus:ring-primary font-body">
             {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
               <option key={m} value={m}>Mes {m}</option>
             ))}
           </select>
-          <select value={filtroAnio} onChange={(e) => setFiltroAnio(Number(e.target.value))} className="border border-gray-300 rounded px-3 py-1.5 text-sm bg-white">
+          <select value={filtroAnio} onChange={(e) => setFiltroAnio(Number(e.target.value))} className="bg-surface-container-lowest shadow-sm px-3 py-1.5 rounded-lg border border-outline-variant/10 text-xs font-bold text-slate-700 hover:bg-surface-container-low transition-colors outline-none focus:ring-1 focus:ring-primary font-body">
             {[currentYear - 1, currentYear, currentYear + 1].map(y => (
               <option key={y} value={y}>{y}</option>
             ))}
@@ -214,10 +219,13 @@ export default function ConvocatoriasPage() {
         </div>
       </div>
 
-      {/* Buscador de Planificaciones */}
-      <div className="mb-4 p-3 bg-indigo-50 border border-indigo-200 rounded-lg flex flex-wrap items-end gap-3">
+      {/* Buscador de Planificaciones con Glassmorphism */}
+      <div className="mb-6 mx-2 p-4 bg-surface-container-lowest/70 backdrop-blur-md rounded-xl border border-outline-variant/10 shadow-sm flex flex-col gap-3">
         <div>
-          <label className="block text-xs font-semibold text-indigo-700 mb-1">🔍 Buscador de ID Planificación</label>
+          <label className="flex items-center gap-1 text-xs font-bold text-primary mb-2 font-headline uppercase tracking-wider">
+            <span className="material-symbols-outlined text-[16px]">search</span>
+            Buscador de ID Planificación
+          </label>
           <div className="flex gap-2 items-center flex-wrap">
             <input
               type="number"
@@ -225,12 +233,12 @@ export default function ConvocatoriasPage() {
               min={1} max={31}
               value={buscarDia}
               onChange={(e) => setBuscarDia(e.target.value ? Number(e.target.value) : '')}
-              className="border border-indigo-300 rounded px-2 py-1.5 text-sm bg-white w-16 focus:ring-1 focus:ring-indigo-400 text-center"
+              className="bg-surface-container-low border-none rounded-md px-3 py-1.5 text-xs text-on-surface-variant w-16 focus:ring-1 focus:ring-primary outline-none text-center font-body"
             />
             <select
               value={buscarMes}
               onChange={(e) => setBuscarMes(Number(e.target.value))}
-              className="border border-indigo-300 rounded px-2 py-1.5 text-sm bg-white focus:ring-1 focus:ring-indigo-400"
+              className="bg-surface-container-low border-none rounded-md px-3 py-1.5 text-xs text-on-surface-variant focus:ring-1 focus:ring-primary outline-none font-body"
             >
               {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
                 <option key={m} value={m}>Mes {m}</option>
@@ -239,7 +247,7 @@ export default function ConvocatoriasPage() {
             <select
               value={buscarTurno}
               onChange={(e) => setBuscarTurno(e.target.value)}
-              className="border border-indigo-300 rounded px-2 py-1.5 text-sm bg-white focus:ring-1 focus:ring-indigo-400 w-44"
+              className="bg-surface-container-low border-none rounded-md px-3 py-1.5 text-xs text-on-surface-variant focus:ring-1 focus:ring-primary outline-none w-44 font-body"
             >
               <option value="">Cualquier turno...</option>
               {turnosDisponibles.map(t => (
@@ -251,30 +259,30 @@ export default function ConvocatoriasPage() {
             <button
               onClick={buscarPlanificaciones}
               disabled={buscando}
-              className="px-3 py-1.5 text-sm bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50"
+              className="px-4 py-1.5 text-xs font-bold font-headline uppercase tracking-wide bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors disabled:opacity-50"
             >
               {buscando ? 'Buscando...' : 'Buscar'}
             </button>
           </div>
         </div>
         {planesEncontrados.length > 0 && (
-          <div className="flex flex-wrap gap-2 items-center">
-            <span className="text-xs text-indigo-600 font-semibold">Resultados:</span>
+          <div className="flex flex-wrap gap-2 items-center pt-2">
+            <span className="text-xs text-primary font-bold uppercase tracking-widest font-headline">Resultados:</span>
             {planesEncontrados.map(p => (
-              <span
+              <button
                 key={p.id_plani}
-                className="bg-white border border-indigo-300 text-indigo-800 text-xs px-2 py-1 rounded cursor-pointer hover:bg-indigo-100 font-mono"
+                className="bg-primary/5 border border-primary/20 text-primary text-xs px-3 py-1 rounded-full hover:bg-primary/10 hover:border-primary/30 font-mono font-medium transition-colors active:scale-95"
                 title={`ID ${p.id_plani} — ${p.tipo_turno}${p.grupo ? ` (Grupo ${p.grupo})` : ''}`}
                 onClick={() => navigator.clipboard.writeText(String(p.id_plani))}
               >
-                ID: {p.id_plani} · {p.tipo_turno}{p.grupo ? ` · Grupo ${p.grupo}` : ''}
-              </span>
+                ID: {p.id_plani} · {p.tipo_turno}{p.grupo ? ` · Grup. ${p.grupo}` : ''}
+              </button>
             ))}
-            <span className="text-xs text-gray-400 italic">Click para copiar ID</span>
+            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-widest ml-2">Click para copiar ID</span>
           </div>
         )}
         {planesEncontrados.length === 0 && buscarDia && !buscando && (
-          <span className="text-xs text-gray-400 italic">Sin resultados para ese día/turno.</span>
+          <span className="text-xs text-slate-400 italic mt-2">Sin resultados para ese día/turno.</span>
         )}
       </div>
 
@@ -296,27 +304,27 @@ export default function ConvocatoriasPage() {
           bulkRows={bulkPendingRows}
           onBulkRowsConsumed={() => setBulkPendingRows([])}
           extraToolbar={
-            <div className="flex gap-1">
+            <div className="flex gap-2 mb-2 lg:mb-0 lg:ml-2">
               <button
                 onClick={() => addGrupo('A')}
-                className="px-2 py-1.5 text-xs bg-purple-100 text-purple-700 border border-purple-300 hover:bg-purple-200 rounded font-semibold"
+                className="bg-primary/10 text-primary px-3 py-1.5 rounded-lg text-[11px] font-bold font-headline uppercase tracking-wider hover:bg-primary/20 transition-all active:scale-95"
                 title="Agregar las 18 filas del Grupo A"
               >
-                + Grupo A ({agentes.filter(a => a.grupo_capacitacion === 'A').length})
+                + GRUPO A ({agentes.filter(a => a.grupo_capacitacion === 'A').length})
               </button>
               <button
                 onClick={() => addGrupo('B')}
-                className="px-2 py-1.5 text-xs bg-teal-100 text-teal-700 border border-teal-300 hover:bg-teal-200 rounded font-semibold"
+                className="bg-primary/10 text-primary px-3 py-1.5 rounded-lg text-[11px] font-bold font-headline uppercase tracking-wider hover:bg-primary/20 transition-all active:scale-95"
                 title="Agregar las 18 filas del Grupo B"
               >
-                + Grupo B ({agentes.filter(a => a.grupo_capacitacion === 'B').length})
+                + GRUPO B ({agentes.filter(a => a.grupo_capacitacion === 'B').length})
               </button>
               <button
                 onClick={() => { addGrupo('A'); addGrupo('B'); }}
-                className="px-2 py-1.5 text-xs bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200 rounded font-semibold"
+                className="bg-surface-container-high text-on-surface-variant px-3 py-1.5 rounded-lg text-[11px] font-bold font-headline uppercase tracking-wider hover:bg-surface-dim transition-all border border-outline-variant/20 active:scale-95"
                 title="Agregar los 36 residentes (A + B)"
               >
-                +36 (Todos)
+                +36 (TODOS)
               </button>
             </div>
           }

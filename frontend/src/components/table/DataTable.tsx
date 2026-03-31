@@ -263,17 +263,17 @@ export default function DataTable<T extends object>(props: DataTableProps<T>) {
   return (
     <div>
       {/* Toolbar */}
-      <div className="flex items-center gap-2 mb-3">
+      <div className="flex flex-wrap items-center gap-3 mb-4">
         <button
           onClick={addRow}
-          className="px-3 py-1.5 text-sm bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+          className="bg-gradient-to-br from-primary to-primary-container text-white px-4 py-1.5 rounded-lg text-xs font-bold font-headline shadow-md hover:shadow-lg active:scale-95 transition-all"
         >
-          + Nuevo
+          + NUEVA FILA
         </button>
         {enableClone && (
-          <div className="flex">
-            <button onClick={() => addMultipleRows(18)} className="px-2 py-1.5 text-sm bg-blue-100 text-blue-700 border border-blue-200 hover:bg-blue-200 rounded-l border-r-0">+18</button>
-            <button onClick={() => addMultipleRows(36)} className="px-2 py-1.5 text-sm bg-blue-100 text-blue-700 border border-blue-200 hover:bg-blue-200 rounded-r border-l-0">+36</button>
+          <div className="flex gap-2">
+            <button onClick={() => addMultipleRows(18)} className="bg-primary/10 text-primary px-3 py-1.5 rounded-full text-xs font-bold hover:bg-primary/20 transition-all">+18</button>
+            <button onClick={() => addMultipleRows(36)} className="bg-primary/10 text-primary px-3 py-1.5 rounded-full text-xs font-bold hover:bg-primary/20 transition-all">+36</button>
           </div>
         )}
         {extraToolbar}
@@ -293,9 +293,9 @@ export default function DataTable<T extends object>(props: DataTableProps<T>) {
             ))}
             <button
               onClick={markDeleted}
-              className="px-3 py-1.5 text-sm bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+              className="px-3 py-1.5 text-xs font-bold font-headline uppercase tracking-wide bg-error/10 text-error rounded-lg hover:bg-error/20 transition-colors"
             >
-              Eliminar seleccionados ({selectedIds.size})
+              Eliminar {selectedIds.size}
             </button>
           </div>
         )}
@@ -303,23 +303,23 @@ export default function DataTable<T extends object>(props: DataTableProps<T>) {
           <button
             onClick={() => setShowConfirm(true)}
             disabled={saving}
-            className="ml-auto px-4 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors disabled:opacity-50 font-semibold"
+            className="ml-auto px-5 py-1.5 text-xs font-bold font-headline uppercase tracking-wide bg-tertiary text-on-tertiary rounded-lg shadow-md hover:shadow-lg transition-all disabled:opacity-50 active:scale-95"
           >
-            {saving ? 'Guardando...' : `Guardar cambios (${diff.inserts.length + diff.updates.length + diff.deletes.length})`}
+            {saving ? 'Guardando...' : `Guardar Cambios (${diff.inserts.length + diff.updates.length + diff.deletes.length})`}
           </button>
         )}
       </div>
 
       {/* Table */}
-      <div className="overflow-x-auto rounded-lg border border-gray-200">
-        <table className="min-w-full divide-y divide-gray-200 text-sm">
-          <thead className="bg-gray-50">
+      <div className="overflow-x-auto bg-surface-container-lowest rounded-xl shadow-sm border border-outline-variant/10">
+        <table className="min-w-full text-left border-collapse text-sm">
+          <thead className="bg-surface-container-low sticky top-0 z-10">
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
                   <th
                     key={header.id}
-                    className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"
+                    className="py-2.5 px-4 font-headline uppercase text-on-surface-variant tracking-wider border-none text-xs font-semibold"
                     style={{ width: header.getSize() !== 150 ? header.getSize() : undefined }}
                   >
                     {flexRender(header.column.columnDef.header, header.getContext())}
@@ -328,7 +328,7 @@ export default function DataTable<T extends object>(props: DataTableProps<T>) {
               </tr>
             ))}
           </thead>
-          <tbody className="bg-white divide-y divide-gray-100">
+          <tbody className="divide-y divide-outline-variant/5 text-on-surface">
             {table.getRowModel().rows.map((row) => {
               const status = row.original._status;
               return (
@@ -336,16 +336,16 @@ export default function DataTable<T extends object>(props: DataTableProps<T>) {
                   key={row.id}
                   className={
                     status === 'new'
-                      ? 'bg-green-50'
+                      ? 'bg-emerald-500/10'
                       : status === 'modified'
-                      ? 'bg-yellow-50'
+                      ? 'bg-yellow-500/10'
                       : status === 'deleted'
-                      ? 'bg-red-50 opacity-50'
-                      : 'hover:bg-gray-50'
+                      ? 'bg-error/10 opacity-50'
+                      : 'row-hover transition-colors'
                   }
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id} className="px-3 py-1.5 whitespace-nowrap">
+                    <td key={cell.id} className="px-4 py-2 border-none">
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </td>
                   ))}

@@ -1,7 +1,69 @@
 @import "tailwindcss";
 
-body {
-  font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
-  background-color: #f3f4f6;
-  color: #1f2937;
+@theme {
+  --color-on-secondary-fixed-variant: #3f465c;
+  --color-error-container: #ffdad6;
+  --color-on-primary-fixed-variant: #372abf;
+  --color-surface-variant: #e0e3e5;
+  --color-on-surface-variant: #464554;
+  --color-primary-fixed: #e3dfff;
+  --color-primary-container: #4338ca;
+  --color-surface-tint: #5148d7;
+  --color-outline-variant: #c7c4d7;
+  --color-surface-container-low: #f2f4f6;
+  --color-on-primary-container: #c1beff;
+  --color-on-secondary-container: #5c647a;
+  --color-on-error: #ffffff;
+  --color-on-secondary: #ffffff;
+  --color-background: #f7f9fb;
+  --color-primary: #2a14b4;
+  --color-tertiary: #692400;
+  --color-on-primary: #ffffff;
+  --color-surface-container: #eceef0;
+  --color-inverse-primary: #c3c0ff;
+  --color-secondary-fixed-dim: #bec6e0;
+  --color-surface-container-high: #e6e8ea;
+  --color-surface-container-lowest: #ffffff;
+  --color-secondary-container: #dae2fd;
+  --color-on-tertiary: #ffffff;
+  --color-tertiary-fixed: #ffdbcd;
+  --color-surface-bright: #f7f9fb;
+  --color-secondary-fixed: #dae2fd;
+  --color-on-tertiary-fixed-variant: #7d2d00;
+  --color-on-background: #191c1e;
+  --color-inverse-surface: #2d3133;
+  --color-tertiary-fixed-dim: #ffb597;
+  --color-surface-container-highest: #e0e3e5;
+  --color-surface: #f7f9fb;
+  --color-on-primary-fixed: #100069;
+  --color-error: #ba1a1a;
+  --color-outline: #777586;
+  --color-primary-fixed-dim: #c3c0ff;
+  --color-inverse-on-surface: #eff1f3;
+  --color-surface-dim: #d8dadc;
+  --color-secondary: #565e74;
+  --color-on-error-container: #93000a;
+  --color-on-secondary-fixed: #131b2e;
+  --color-on-tertiary-fixed: #360f00;
+  --color-on-tertiary-container: #ffb393;
+  --color-on-surface: #191c1e;
+  --color-tertiary-container: #8f3400;
+
+  --font-headline: "Inter", sans-serif;
+  --font-body: "Inter", sans-serif;
+  --font-label: "Inter", sans-serif;
+}
+
+@layer utilities {
+  .material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    vertical-align: middle;
+  }
+  .glass-header {
+    background: rgba(247, 249, 251, 0.7);
+    backdrop-filter: blur(12px);
+  }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  .row-hover:hover { background-color: var(--color-surface-container-high); }
 }

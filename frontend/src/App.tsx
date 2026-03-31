@@ -31,50 +31,70 @@ const NAV_ITEMS = [
 
 function Layout({ children }: { children: React.ReactNode }) {
   const { session } = useAuth();
+  const userName = session?.user?.email?.split('@')[0] || 'U';
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
   };
 
   return (
-    <div className="min-h-screen flex">
-      {/* Sidebar */}
-      <aside className="w-56 bg-gray-900 text-white flex flex-col">
-        <div className="px-4 py-5 border-b border-gray-700">
-          <h1 className="text-sm font-bold text-gray-300 uppercase tracking-widest">Tablero</h1>
-          <p className="text-xs text-gray-500 mt-1">Gestión RRHH</p>
+    <div className="min-h-screen bg-surface font-body text-on-surface">
+      {/* Sidebar (Dark Premium) */}
+      <aside className="fixed left-0 top-0 h-screen w-64 z-40 bg-on-secondary-fixed flex flex-col py-6 gap-2 shadow-2xl">
+        <div className="px-6 mb-8">
+          <h1 className="text-white text-xl font-black">Tablero RRHH</h1>
+          <p className="font-headline uppercase tracking-widest text-[10px] font-bold text-slate-400 mt-1">Hospital Central</p>
         </div>
-        <nav className="flex-1 py-4">
-          {NAV_ITEMS.map((item) => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              className={({ isActive }) =>
-                `block px-4 py-2 text-sm transition-colors ${
-                  isActive
-                    ? 'bg-blue-600 text-white font-semibold'
-                    : 'text-gray-400 hover:bg-gray-800 hover:text-white'
-                }`
-              }
-            >
-              {item.label}
-            </NavLink>
-          ))}
+        <nav className="flex-1 overflow-y-auto no-scrollbar">
+          <div className="space-y-1">
+            {NAV_ITEMS.map((item) => (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 px-4 py-3 mx-2 rounded-lg transition-all duration-200 active:translate-x-1 ${
+                    isActive
+                      ? 'text-white bg-gradient-to-r from-primary to-primary-container shadow-md'
+                      : 'text-slate-400 hover:text-white hover:bg-white/5'
+                  }`
+                }
+              >
+                <span className="font-headline uppercase tracking-widest text-[10px] font-bold">{item.label}</span>
+              </NavLink>
+            ))}
+          </div>
         </nav>
-        <div className="px-4 py-4 border-t border-gray-700">
-          <p className="text-xs text-gray-500 mb-2 truncate">{session?.user?.email}</p>
-          <button
-            onClick={handleLogout}
-            className="text-xs text-red-400 hover:text-red-300 transition-colors"
-          >
-            Cerrar sesión
-          </button>
+        <div className="px-4 mt-auto">
+          <div className="border-t border-white/10 pt-4">
+            <p className="text-xs text-slate-500 mb-4 truncate text-center font-semibold tracking-wider font-headline">{session?.user?.email}</p>
+            <button
+              onClick={handleLogout}
+              className="w-full bg-white/5 text-slate-300 py-3 rounded-lg font-bold text-xs uppercase tracking-widest hover:bg-error/20 hover:text-error transition-all border border-white/5"
+            >
+              Cerrar Sesión
+            </button>
+          </div>
         </div>
       </aside>
 
+      {/* TopAppBar (Glassmorphism) */}
+      <header className="fixed top-0 right-0 left-64 h-14 glass-header z-30 flex items-center justify-between px-8 font-headline antialiased text-sm tracking-tight border-b border-outline-variant/10 shadow-sm">
+        <div className="flex items-center gap-4 flex-1">
+          {/* Breadcrumbs placeholder or global search space */}
+        </div>
+        <div className="flex items-center gap-3">
+          <button className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors rounded-full active:scale-95">
+            <span className="material-symbols-outlined text-xl">notifications</span>
+          </button>
+          <div className="h-8 w-8 rounded-full overflow-hidden ml-2 flex items-center justify-center bg-primary text-white font-bold text-sm ring-2 ring-primary-fixed-dim/50 shadow-md">
+            {userName.charAt(0).toUpperCase()}
+          </div>
+        </div>
+      </header>
+
       {/* Main content */}
-      <main className="flex-1 overflow-auto bg-gray-50">
-        <div className="p-6">
+      <main className="ml-64 pt-14 min-h-screen flex flex-col">
+        <div className="p-8 flex-1 flex flex-col max-w-7xl mx-auto w-full">
           {children}
         </div>
       </main>
