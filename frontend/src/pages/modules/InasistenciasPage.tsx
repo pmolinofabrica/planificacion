@@ -6,10 +6,10 @@ import type { ColumnDef } from '@tanstack/react-table';
 import type { InasistenciaView } from '../../types/database';
 
 const columns: ColumnDef<TrackedRow<InasistenciaView>>[] = [
-  { id: 'id_inasistencia', header: 'ID', cell: ({ row }) => <span className="text-gray-400 text-xs">{row.original.data.id_inasistencia || '—'}</span>, size: 50 },
+  { id: 'id_inasistencia', accessorFn: row => row.data.id_inasistencia, header: 'ID', cell: ({ row }) => <span className="text-gray-400 text-xs">{row.original.data.id_inasistencia || '—'}</span>, size: 50 },
   editableColumn<InasistenciaView>('id_agente', 'ID Agente (Creación)', 'number'),
-  { id: 'agente', header: 'Agente', cell: ({ row }) => row.original.data.agente || '—' },
-  { id: 'dni', header: 'DNI', cell: ({ row }) => row.original.data.dni || '—' },
+  { id: 'agente', accessorFn: row => row.data.agente, header: 'Agente', cell: ({ row }) => row.original.data.agente || '—' },
+  { id: 'dni', accessorFn: row => row.data.dni, header: 'DNI', cell: ({ row }) => row.original.data.dni || '—' },
   editableColumn<InasistenciaView>('fecha_inasistencia', 'Fecha Inasistencia'),
   editableColumn<InasistenciaView>('motivo', 'Motivo'),
   editableColumn<InasistenciaView>('estado', 'Estado'),
@@ -103,7 +103,6 @@ export default function InasistenciasPage() {
       <div className="mb-4 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold text-gray-800">Inasistencias</h2>
-          <p className="text-sm text-gray-500">Gestión de inasistencias. Filtrado obligatorio por mes.</p>
         </div>
         <div className="flex gap-2">
           <select 

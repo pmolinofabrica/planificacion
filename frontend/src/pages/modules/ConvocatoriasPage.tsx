@@ -178,11 +178,11 @@ export default function ConvocatoriasPage() {
   const [bulkPendingRows, setBulkPendingRows] = useState<ViewConvocatoria[]>([]);
 
   const columns = useMemo<ColumnDef<TrackedRow<ViewConvocatoria>>[]>(() => [
-    { id: 'id_convocatoria', header: 'ID', cell: ({ row }) => <span className="text-gray-400 text-xs">{row.original.data.id_convocatoria || '—'}</span>, size: 50 },
+    { id: 'id_convocatoria', accessorFn: row => row.data.id_convocatoria, header: 'ID', cell: ({ row }) => <span className="text-gray-400 text-xs">{row.original.data.id_convocatoria || '—'}</span>, size: 50 },
     editableColumn<ViewConvocatoria>('dni', 'Agente', 'select', agentesOptions),
     editableColumn<ViewConvocatoria>('id_plani', 'ID Planif.', 'number'),
-    { id: 'fecha_turno', header: 'Fecha', cell: ({ row }) => <span className="text-gray-600 text-xs">{row.original.data.fecha_turno || '—'}</span> },
-    { id: 'tipo_turno', header: 'Turno', cell: ({ row }) => <span className="text-gray-600 text-xs">{row.original.data.tipo_turno || '—'}</span> },
+    { id: 'fecha_turno', accessorFn: row => row.data.fecha_turno, header: 'Fecha', cell: ({ row }) => <span className="text-gray-600 text-xs">{row.original.data.fecha_turno || '—'}</span> },
+    { id: 'tipo_turno', accessorFn: row => row.data.tipo_turno, header: 'Turno', cell: ({ row }) => <span className="text-gray-600 text-xs">{row.original.data.tipo_turno || '—'}</span> },
     editableColumn<ViewConvocatoria>('estado', 'Estado', 'select', [
       { value: 'vigente', label: 'Vigente' },
       { value: 'cumplida', label: 'Cumplida' },
@@ -197,12 +197,6 @@ export default function ConvocatoriasPage() {
       <div className="px-2 py-2 flex flex-col md:flex-row md:items-end justify-between gap-4 shrink-0 mb-4">
         <div>
           <h2 className="text-3xl font-headline font-extrabold tracking-tighter text-on-surface">Convocatorias</h2>
-          <div className="flex items-center gap-2 mt-1 text-slate-500 text-xs font-body">
-            <span className="material-symbols-outlined text-sm">home</span>
-            <span>Dashboard</span>
-            <span>/</span>
-            <span className="font-semibold text-primary">Convocatorias</span>
-          </div>
         </div>
         <div className="flex gap-2">
           <select value={filtroMes} onChange={(e) => setFiltroMes(Number(e.target.value))} className="bg-surface-container-lowest shadow-sm px-3 py-1.5 rounded-lg border border-outline-variant/10 text-xs font-bold text-slate-700 hover:bg-surface-container-low transition-colors outline-none focus:ring-1 focus:ring-primary font-body">

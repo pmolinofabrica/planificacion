@@ -23,7 +23,7 @@ const NAV_ITEMS = [
   { path: '/descansos', label: 'Descansos' },
   { path: '/certificados', label: 'Certificados' },
   { path: '/capacitaciones', label: 'Capacitaciones' },
-  { path: '/caps_dispositivos', label: 'Caps Asignadas' },
+  { path: '/caps_dispositivos', label: 'Caps Disp' },
   { path: '/dispositivos', label: 'Dispositivos' },
   { path: '/turnos', label: 'Turnos' },
   { path: '/saldos', label: 'Saldos' },
@@ -41,8 +41,8 @@ function Layout({ children }: { children: React.ReactNode }) {
       {/* Sidebar (Dark Premium) */}
       <aside className="fixed left-0 top-0 h-screen w-64 z-40 bg-on-secondary-fixed flex flex-col py-6 gap-2 shadow-2xl">
         <div className="px-6 mb-8">
-          <h1 className="text-white text-xl font-black">Tablero RRHH</h1>
-          <p className="font-headline uppercase tracking-widest text-[10px] font-bold text-slate-400 mt-1">Hospital Central</p>
+          <h1 className="text-white text-2xl font-black">El Molino</h1>
+          <p className="font-headline uppercase tracking-widest text-[10px] font-bold text-slate-400 mt-1">Residencias Culturales</p>
         </div>
         <nav className="flex-1 overflow-y-auto no-scrollbar">
           <div className="space-y-1">

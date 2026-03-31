@@ -2,9 +2,11 @@ import {
   useReactTable,
   getCoreRowModel,
   getPaginationRowModel,
+  getSortedRowModel,
+  getFilteredRowModel,
   flexRender,
 } from '@tanstack/react-table';
-import type { ColumnDef } from '@tanstack/react-table';
+import type { ColumnDef, SortingState, ColumnFiltersState } from '@tanstack/react-table';
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import type { TrackedRow, BatchError } from '../../types/table';
@@ -52,6 +54,8 @@ export default function DataTable<T extends object>(props: DataTableProps<T>) {
   const [showConfirm, setShowConfirm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [batchResult, setBatchResult] = useState<{ successes: number; failures: BatchError[] } | null>(null);
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 
   const visibleRows = useMemo(() => rows.filter((r) => r._status !== 'deleted'), [rows]);
 
@@ -250,8 +254,16 @@ export default function DataTable<T extends object>(props: DataTableProps<T>) {
   const table = useReactTable({
     data: visibleRows,
     columns: tableColumns,
+    state: {
+      sorting,
+      columnFilters,
+    },
+    onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
     initialState: {
       pagination: {
         pageSize: 50,
@@ -319,10 +331,29 @@ export default function DataTable<T extends object>(props: DataTableProps<T>) {
                 {headerGroup.headers.map((header) => (
                   <th
                     key={header.id}
-                    className="py-2.5 px-4 font-headline uppercase text-on-surface-variant tracking-wider border-none text-xs font-semibold"
+                    className="py-2.5 px-4 font-headline uppercase text-on-surface-variant tracking-wider border-none text-xs font-semibold align-top"
                     style={{ width: header.getSize() !== 150 ? header.getSize() : undefined }}
                   >
-                    {flexRender(header.column.columnDef.header, header.getContext())}
+                    {!header.isPlaceholder && (
+                      <div className="flex flex-col gap-2">
+                        <div
+                          className={`flex items-center gap-1 ${header.column.getCanSort() ? 'cursor-pointer select-none hover:text-primary' : ''}`}
+                          onClick={header.column.getToggleSortingHandler()}
+                        >
+                          {flexRender(header.column.columnDef.header, header.getContext())}
+                          {{ asc: ' 🔼', desc: ' 🔽' }[header.column.getIsSorted() as string] ?? null}
+                        </div>
+                        {header.column.getCanFilter() && !['select', '_status', '_actions'].includes(header.id) ? (
+                          <input
+                            type="text"
+                            value={(header.column.getFilterValue() ?? '') as string}
+                            onChange={(e) => header.column.setFilterValue(e.target.value)}
+                            className="w-full px-2 py-1 text-[10px] font-body normal-case tracking-normal text-slate-700 bg-surface border border-outline-variant/30 rounded focus:ring-1 focus:ring-primary outline-none"
+                            placeholder="Filtrar..."
+                          />
+                        ) : null}
+                      </div>
+                    )}
                   </th>
                 ))}
               </tr>
@@ -441,6 +472,15 @@ export function editableColumn<T extends object>(
 ): ColumnDef<TrackedRow<T>> {
   return {
     id: String(field),
+    accessorFn: (row) => {
+      // For select columns, return the label instead of value for proper filtering/sorting
+      if (type === 'select' && options) {
+        const value = row.data[field];
+        const match = options.find(o => String(o.value) === String(value));
+        return match ? match.label : value;
+      }
+      return row.data[field];
+    },
     header,
     cell: ({ row, table }) => (
       <EditableCell

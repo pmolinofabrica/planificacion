@@ -136,7 +136,6 @@ export default function PlanificacionPage() {
       <div className="mb-4 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold text-gray-800">Planificación Base</h2>
-          <p className="text-sm text-gray-500">Manejo de la matriz maestra filtrando por mes y año. Ahora con selectores relacionales en memoria.</p>
         </div>
         <div className="flex gap-2 items-center">
           <select 

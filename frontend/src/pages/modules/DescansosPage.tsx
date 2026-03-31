@@ -133,10 +133,7 @@ export default function DescansosPage() {
     <div>
       <div className="mb-4 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-gray-800">Descansos</h2>
-          <p className="text-sm text-gray-500">
-            Aprobar descansos crea las convocatorias automáticamente. Tilda filas y usa el botón de asignación.
-          </p>
+          <h2 className="text-xl font-bold text-gray-800">Registro de Descansos Compensatorios</h2>
         </div>
         <div className="flex gap-2">
           <select 

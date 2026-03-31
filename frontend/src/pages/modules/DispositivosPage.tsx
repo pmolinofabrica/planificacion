@@ -55,8 +55,7 @@ export default function DispositivosPage() {
   return (
     <div>
       <div className="mb-4">
-        <h2 className="text-xl font-bold text-gray-800">Dispositivos</h2>
-        <p className="text-sm text-gray-500">Unidades de servicio en el espacio físico.</p>
+        <h2 className="text-xl font-bold text-gray-800">Dispositivos Físicos</h2>
       </div>
       
       {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">{error}</div>}

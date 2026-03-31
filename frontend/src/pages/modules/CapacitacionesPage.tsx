@@ -1,19 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
 import DataTable, { editableColumn } from '../../components/table/DataTable';
 import type { TrackedRow } from '../../types/table';
 import type { ColumnDef } from '@tanstack/react-table';
 import type { Capacitacion } from '../../types/database';
 
-const columns: ColumnDef<TrackedRow<Capacitacion>>[] = [
-  { id: 'id_cap', header: 'ID', cell: ({ row }) => <span className="text-gray-400 text-xs">{row.original.data.id_cap || '—'}</span>, size: 50 },
-  editableColumn<Capacitacion>('id_dia', 'ID Día', 'number'),
-  editableColumn<Capacitacion>('id_turno', 'ID Turno', 'number'),
-  editableColumn<Capacitacion>('coordinador_cap', 'Coord. (ID Agente)', 'number'),
-  editableColumn<Capacitacion>('tema', 'Tema'),
-  editableColumn<Capacitacion>('grupo', 'Grupo'),
-  editableColumn<Capacitacion>('observaciones', 'Observaciones'),
-];
+// We will define columns dynamically inside the component to use the state options.
 
 const newCapacitacionTemplate: Capacitacion = {
   id_cap: 0,
@@ -32,9 +24,25 @@ export default function CapacitacionesPage() {
   const [refreshKey, setRefreshKey] = useState(Date.now());
   const [limit, setLimit] = useState(100);
 
+  const [diasOptions, setDiasOptions] = useState<{value: number, label: string}[]>([]);
+  const [turnosOptions, setTurnosOptions] = useState<{value: number, label: string}[]>([]);
+
   const fetchCaps = useCallback(async () => {
     setLoading(true);
     setError('');
+
+    // Fetch Dias
+    const { data: diasRes } = await supabase.from('dias').select('id_dia, fecha').order('fecha', { ascending: false }).limit(365);
+    if (diasRes) {
+      setDiasOptions(diasRes.map(d => ({ value: d.id_dia, label: d.fecha })));
+    }
+
+    // Fetch Turnos
+    const { data: turnosRes } = await supabase.from('turnos').select('id_turno, tipo_turno').eq('activo', true);
+    if (turnosRes) {
+      setTurnosOptions(turnosRes.map(t => ({ value: t.id_turno, label: t.tipo_turno })));
+    }
+
     const { data: rows, error: err } = await supabase
       .from('capacitaciones')
       .select('*')
@@ -54,12 +62,21 @@ export default function CapacitacionesPage() {
     fetchCaps();
   }, [fetchCaps]);
 
+  const columns = useMemo<ColumnDef<TrackedRow<Capacitacion>>[]>(() => [
+    { id: 'id_cap', header: 'ID', accessorFn: row => row.data.id_cap, cell: ({ row }) => <span className="text-gray-400 text-xs">{row.original.data.id_cap || '—'}</span>, size: 50 },
+    editableColumn<Capacitacion>('id_dia', 'Día', 'select', diasOptions),
+    editableColumn<Capacitacion>('id_turno', 'Turno', 'select', turnosOptions),
+    editableColumn<Capacitacion>('coordinador_cap', 'Coord. (ID Agente)', 'number'),
+    editableColumn<Capacitacion>('tema', 'Tema'),
+    editableColumn<Capacitacion>('grupo', 'Grupo'),
+    editableColumn<Capacitacion>('observaciones', 'Observaciones'),
+  ], [diasOptions, turnosOptions]);
+
   return (
     <div>
       <div className="mb-4 flex justify-between items-end">
         <div>
           <h2 className="text-xl font-bold text-gray-800">Capacitaciones</h2>
-          <p className="text-sm text-gray-500">Catálogo general de capacitaciones.</p>
         </div>
         <select 
           value={limit} 

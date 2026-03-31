@@ -57,7 +57,6 @@ export default function SaldosPage() {
       <div className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold text-gray-800">Saldos Consolidados</h2>
-          <p className="text-sm text-gray-500">Calculo centralizado de saldos mensualizados y anuales. Pre-Calculado por Supabase.</p>
         </div>
         
         <div className="flex items-center gap-2">

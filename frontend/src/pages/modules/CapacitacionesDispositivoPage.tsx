@@ -103,8 +103,7 @@ export default function CapacitacionesDispositivoPage() {
     <div>
       <div className="mb-4 flex flex-col md:flex-row justify-between md:items-end gap-2">
         <div>
-          <h2 className="text-xl font-bold text-gray-800">Asignación Dispositivos</h2>
-          <p className="text-sm text-gray-500">Relación de dispositivos utilizados en capacitaciones.</p>
+          <h2 className="text-xl font-bold text-gray-800">Capacitaciones → Dispositivo</h2>
         </div>
         <select 
           value={limit} 

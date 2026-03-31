@@ -83,8 +83,7 @@ export default function TurnosPage() {
   return (
     <div>
       <div className="mb-4">
-        <h2 className="text-xl font-bold text-gray-800">Turnos</h2>
-        <p className="text-sm text-gray-500">Click en cualquier celda para editar. Los cambios no se guardan hasta confirmar.</p>
+        <h2 className="text-xl font-bold text-gray-800">Administrar Turnos</h2>
       </div>
       <DataTable<Turno>
         key={refreshKey}

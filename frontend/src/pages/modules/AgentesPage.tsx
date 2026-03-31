@@ -71,8 +71,7 @@ export default function AgentesPage() {
   return (
     <div>
       <div className="mb-4">
-        <h2 className="text-xl font-bold text-gray-800">Agentes (Datos Personales)</h2>
-        <p className="text-sm text-gray-500">Gestión combinada del padrón de residentes.</p>
+        <h2 className="text-xl font-bold text-gray-800">Agentes</h2>
       </div>
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
