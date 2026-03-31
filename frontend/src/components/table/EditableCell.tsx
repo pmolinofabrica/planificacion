@@ -45,10 +45,12 @@ export const EditableCell = React.memo(function EditableCell({ value, onSave, ty
   };
 
   if (type === 'boolean') {
+    // Handle both boolean true and string "true" correctly
+    const isChecked = value === true || value === 'true';
     return (
       <input
         type="checkbox"
-        checked={Boolean(value)}
+        checked={isChecked}
         onChange={(e) => onSave(String(e.target.checked))}
         className="cursor-pointer accent-blue-600"
       />

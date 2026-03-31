@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
 import DataTable, { editableColumn } from '../../components/table/DataTable';
+import { EditableCell } from '../../components/table/EditableCell';
 import type { TrackedRow, BatchError } from '../../types/table';
 import type { ColumnDef } from '@tanstack/react-table';
 
@@ -177,20 +178,58 @@ export default function ConvocatoriasPage() {
 
   const [bulkPendingRows, setBulkPendingRows] = useState<ViewConvocatoria[]>([]);
 
-  const columns = useMemo<ColumnDef<TrackedRow<ViewConvocatoria>>[]>(() => [
-    { id: 'id_convocatoria', accessorFn: row => row.data.id_convocatoria, header: 'ID', cell: ({ row }) => <span className="text-gray-400 text-xs">{row.original.data.id_convocatoria || '—'}</span>, size: 50 },
-    editableColumn<ViewConvocatoria>('dni', 'Agente', 'select', agentesOptions),
-    editableColumn<ViewConvocatoria>('id_plani', 'ID Planif.', 'number'),
-    { id: 'fecha_turno', accessorFn: row => row.data.fecha_turno, header: 'Fecha', cell: ({ row }) => <span className="text-gray-600 text-xs">{row.original.data.fecha_turno || '—'}</span> },
-    { id: 'tipo_turno', accessorFn: row => row.data.tipo_turno, header: 'Turno', cell: ({ row }) => <span className="text-gray-600 text-xs">{row.original.data.tipo_turno || '—'}</span> },
-    editableColumn<ViewConvocatoria>('estado', 'Estado', 'select', [
-      { value: 'vigente', label: 'Vigente' },
-      { value: 'cumplida', label: 'Cumplida' },
-      { value: 'cancelada', label: 'Cancelada' },
-    ]),
-    editableColumn<ViewConvocatoria>('turno_cancelado', 'Cancelado', 'boolean'),
-    editableColumn<ViewConvocatoria>('motivo_cambio', 'Motivo'),
-  ], [agentesOptions]);
+  const columns = useMemo<ColumnDef<TrackedRow<ViewConvocatoria>>[]>(() => {
+    // Intercept id_plani edits to auto-fetch missing id_turno, fecha, tipo_turno
+    const planiCol = editableColumn<ViewConvocatoria>('id_plani', 'ID Planif.', 'number');
+
+    planiCol.cell = (props) => {
+      const { row, table } = props;
+
+      const handleSave = async (val: string) => {
+        const meta = table.options.meta as any;
+        const idPlaniNum = Number(val);
+        meta.updateCell(row.original._id, 'id_plani', idPlaniNum ? String(idPlaniNum) : '');
+
+        if (idPlaniNum) {
+          // Fetch missing fields from vista_planificacion_anio
+          const { data } = await supabase
+            .from('vista_planificacion_anio')
+            .select('id_turno, fecha, tipo_turno')
+            .eq('id_plani', idPlaniNum)
+            .single();
+
+          if (data) {
+             meta.updateCell(row.original._id, 'id_turno', String(data.id_turno));
+             meta.updateCell(row.original._id, 'fecha_turno', data.fecha);
+             meta.updateCell(row.original._id, 'tipo_turno', data.tipo_turno);
+          }
+        }
+      };
+
+      return (
+        <EditableCell
+          value={row.original.data.id_plani}
+          onSave={handleSave}
+          type="number"
+        />
+      );
+    };
+
+    return [
+      { id: 'id_convocatoria', accessorFn: row => row.data.id_convocatoria, header: 'ID', cell: ({ row }) => <span className="text-gray-400 text-xs">{row.original.data.id_convocatoria || '—'}</span>, size: 50 },
+      editableColumn<ViewConvocatoria>('dni', 'Agente', 'select', agentesOptions),
+      planiCol,
+      { id: 'fecha_turno', accessorFn: row => row.data.fecha_turno, header: 'Fecha', cell: ({ row }) => <span className="text-gray-600 text-xs">{row.original.data.fecha_turno || '—'}</span> },
+      { id: 'tipo_turno', accessorFn: row => row.data.tipo_turno, header: 'Turno', cell: ({ row }) => <span className="text-gray-600 text-xs">{row.original.data.tipo_turno || '—'}</span> },
+      editableColumn<ViewConvocatoria>('estado', 'Estado', 'select', [
+        { value: 'vigente', label: 'Vigente' },
+        { value: 'cumplida', label: 'Cumplida' },
+        { value: 'cancelada', label: 'Cancelada' },
+      ]),
+      editableColumn<ViewConvocatoria>('turno_cancelado', 'Cancelado', 'boolean'),
+      editableColumn<ViewConvocatoria>('motivo_cambio', 'Motivo'),
+    ];
+  }, [agentesOptions]);
 
   return (
     <div className="flex flex-col h-full">
