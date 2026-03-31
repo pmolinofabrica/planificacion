@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
 import DataTable, { editableColumn } from '../../components/table/DataTable';
+import EditableCell from '../../components/table/EditableCell';
 import type { TrackedRow, BatchError } from '../../types/table';
 import type { ColumnDef } from '@tanstack/react-table';
 import type { VistaCapacitacionesDispositivos } from '../../types/database';
@@ -37,13 +38,28 @@ export default function CapacitacionesDispositivoPage() {
 
     // Fetch dropdown options in parallel and the new view
     const [capsRes, disposRes, rowsRes] = await Promise.all([
-      supabase.from('capacitaciones').select('id_cap, tema').order('id_cap', { ascending: false }).limit(200),
+      // Fetching joined data to get date and group for autofill
+      supabase.from('capacitaciones').select(`
+        id_cap,
+        tema,
+        grupo,
+        dias ( fecha )
+      `).order('id_cap', { ascending: false }).limit(200),
       supabase.from('dispositivos').select('id_dispositivo, nombre_dispositivo').order('nombre_dispositivo'),
       supabase.from('vista_capacitaciones_dispositivos').select('*').limit(limit)
     ]);
 
     if (capsRes.data) {
-      setCapOptions(capsRes.data.map(c => ({ value: c.id_cap, label: `[${c.id_cap}] ${c.tema}` })));
+      setCapOptions(capsRes.data.map(c => {
+        // Safe access to joined dia object depending on how Supabase returns it (array or object)
+        const diaArray = Array.isArray(c.dias) ? c.dias : [c.dias];
+        const fecha = diaArray[0]?.fecha || '';
+        return {
+          value: c.id_cap,
+          label: `[${c.id_cap}] ${c.tema} ${fecha ? `(${fecha})` : ''}`,
+          meta: { fecha, grupo: c.grupo }
+        };
+      }));
     }
     if (disposRes.data) {
       setDispoOptions(disposRes.data.map(d => ({ value: d.id_dispositivo, label: d.nombre_dispositivo })));
@@ -78,9 +94,17 @@ export default function CapacitacionesDispositivoPage() {
 
     for (let i = 0; i < realInserts.length; i++) {
         const row = realInserts[i];
+
+        // RLS in Supabase might block simple inserts depending on policies (e.g., auth.uid() check on specific roles).
+        // Using upsert or ensuring we don't insert invalid IDs
+        if (!row.id_cap || !row.id_dispositivo) {
+             failures.push({ index: i, row: inserts[i], error: 'Capacitación o Dispositivo no seleccionados.' });
+             continue;
+        }
+
         const { error } = await supabase
             .from('capacitaciones_dispositivos')
-            .insert(row);
+            .upsert(row, { onConflict: 'id_cap,id_dispositivo' });
 
         if (error) {
             failures.push({ index: i, row: inserts[i], error: error.message });
@@ -91,13 +115,43 @@ export default function CapacitacionesDispositivoPage() {
     return { successes, failures };
   };
 
-  const columns = useMemo<ColumnDef<TrackedRow<ViewCapDispo>>[]>(() => [
-    { id: 'fecha', header: 'Fecha Real', cell: ({ row }) => <span className="text-gray-500 text-xs">{row.original.data.fecha || '—'}</span> },
-    { id: 'grupo', header: 'Grupo', cell: ({ row }) => <span className="font-bold text-xs">{row.original.data.grupo_capacitacion || '—'}</span> },
-    editableColumn<ViewCapDispo>('id_cap', 'Capacitación (Editar)', 'select', capOptions),
-    editableColumn<ViewCapDispo>('id_dispositivo', 'Dispositivo (Editar)', 'select', dispoOptions),
-    editableColumn<ViewCapDispo>('tiempo_minutos', 'Minutos Uso', 'number'),
-  ], [capOptions, dispoOptions]);
+  const columns = useMemo<ColumnDef<TrackedRow<ViewCapDispo>>[]>(() => {
+    // Custom wrapper around editableColumn to autofill related fields when id_cap changes
+    const capCol = editableColumn<ViewCapDispo>('id_cap', 'Capacitación (Editar)', 'select', capOptions);
+
+    capCol.cell = (props) => {
+      const { row, table } = props;
+
+      const handleSave = (val: string) => {
+        const meta = table.options.meta as any;
+        meta.updateCell(row.original._id, 'id_cap', val);
+
+        // Find metadata (fecha, grupo) from selected option and autofill it in frontend
+        const selectedOpt = (capOptions as any[]).find(o => String(o.value) === String(val));
+        if (selectedOpt && selectedOpt.meta) {
+           meta.updateCell(row.original._id, 'fecha', selectedOpt.meta.fecha);
+           meta.updateCell(row.original._id, 'grupo_capacitacion', selectedOpt.meta.grupo);
+        }
+      };
+
+      return (
+        <EditableCell
+          value={row.original.data.id_cap}
+          onSave={handleSave}
+          type="select"
+          options={capOptions}
+        />
+      );
+    };
+
+    return [
+      { id: 'fecha', header: 'Fecha Real', cell: ({ row }) => <span className="text-gray-500 text-xs">{row.original.data.fecha || '—'}</span> },
+      { id: 'grupo_capacitacion', header: 'Grupo', cell: ({ row }) => <span className="font-bold text-xs">{row.original.data.grupo_capacitacion || '—'}</span> },
+      capCol,
+      editableColumn<ViewCapDispo>('id_dispositivo', 'Dispositivo (Editar)', 'select', dispoOptions),
+      editableColumn<ViewCapDispo>('tiempo_minutos', 'Minutos Uso', 'number'),
+    ];
+  }, [capOptions, dispoOptions]);
 
   return (
     <div>
