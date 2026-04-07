@@ -3,9 +3,11 @@ import { supabase } from '../../lib/supabase';
 import DataTable, { editableColumn } from '../../components/table/DataTable';
 import type { TrackedRow } from '../../types/table';
 import type { ColumnDef } from '@tanstack/react-table';
+import { batchInsert } from '../../utils/batch';
+import type { BatchError } from '../../types/table';
 
 export interface Planificacion {
-  id_plani: number;
+  id_plani?: number;
   id_dia: number;
   id_turno: number;
   cant_residentes_plan: number | null;
@@ -19,18 +21,6 @@ export interface Planificacion {
 const currentDate = new Date();
 const currentMonth = currentDate.getMonth() + 1;
 const currentYear = currentDate.getFullYear();
-
-const newPlaniTemplate: Planificacion = {
-  id_plani: 0,
-  id_dia: 0,
-  id_turno: 0,
-  cant_residentes_plan: 0,
-  cant_visit: 0,
-  grupo: null,
-  plani_notas: null,
-  hora_inicio: null,
-  hora_fin: null,
-};
 
 export default function PlanificacionPage() {
   const [data, setData] = useState<Planificacion[]>([]);
@@ -96,8 +86,9 @@ export default function PlanificacionPage() {
 
       setData((planiRes || []) as Planificacion[]);
       setRefreshKey(Date.now());
-    } catch (e: any) {
-      setError('Error al cargar datos: ' + e.message);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Error desconocido';
+      setError('Error al cargar datos: ' + message);
     } finally {
       setLoading(false);
     }
@@ -126,10 +117,25 @@ export default function PlanificacionPage() {
 
   // Modificamos el template para que tome por defecto el primer día del mes y el primer turno si existen
   const buildCurrentTemplate = () => ({
-    ...newPlaniTemplate,
     id_dia: diasOptions.length > 0 ? diasOptions[0].value : 0,
     id_turno: turnosOptions.length > 0 ? turnosOptions[0].value : 0,
+    cant_residentes_plan: 0,
+    cant_visit: 0,
+    grupo: null,
+    plani_notas: null,
+    hora_inicio: null,
+    hora_fin: null,
   });
+
+  const insertPlanificacionRows = async (rows: Planificacion[]): Promise<{ successes: Planificacion[]; failures: BatchError[] }> => {
+    // Dejar que Supabase asigne id_plani al crear nuevas filas.
+    const sanitizedRows = rows.map((row) => {
+      const sanitized = { ...row } as Omit<Planificacion, 'id_plani'> & Partial<Pick<Planificacion, 'id_plani'>>;
+      delete sanitized.id_plani;
+      return sanitized;
+    });
+    return batchInsert<Omit<Planificacion, 'id_plani'>>('planificacion', sanitizedRows) as Promise<{ successes: Planificacion[]; failures: BatchError[] }>;
+  };
 
   return (
     <div>
@@ -173,6 +179,7 @@ export default function PlanificacionPage() {
           columns={columns}
           onRefresh={fetchData}
           buildNewRow={buildCurrentTemplate}
+          onBatchInsert={insertPlanificacionRows}
           enableClone={true}
         />
       )}

@@ -1,22 +1,23 @@
-import { useState, useEffect, useCallback } from 'react';
+﻿import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
 import DataTable, { editableColumn } from '../../components/table/DataTable';
 import type { TrackedRow, BatchError } from '../../types/table';
 import type { ColumnDef } from '@tanstack/react-table';
 import type { CertificadoView } from '../../types/database';
 
-const columns: ColumnDef<TrackedRow<CertificadoView>>[] = [
-  { id: 'id_certificado', header: 'ID', cell: ({ row }) => <span className="text-gray-400 text-xs">{row.original.data.id_certificado || '—'}</span>, size: 50 },
-  editableColumn<CertificadoView>('id_inasistencia', 'ID Inasistencia', 'number'),
-  editableColumn<CertificadoView>('id_agente', 'ID Agente', 'number'),
+type CertificadoDraft = Omit<CertificadoView, 'id_certificado'> & { id_certificado?: number };
+
+const columns: ColumnDef<TrackedRow<CertificadoDraft>>[] = [
+  { id: 'id_certificado', header: 'ID', cell: ({ row }) => <span className="text-gray-400 text-xs">{row.original.data.id_certificado ?? '—'}</span>, size: 50 },
+  editableColumn<CertificadoDraft>('id_inasistencia', 'ID Inasistencia', 'number'),
+  editableColumn<CertificadoDraft>('id_agente', 'ID Agente', 'number'),
   { id: 'agente', header: 'Agente', cell: ({ row }) => row.original.data.agente || '—' },
-  editableColumn<CertificadoView>('fecha_inasistencia_justifica', 'Fecha Justificada', 'date'),
+  editableColumn<CertificadoDraft>('fecha_inasistencia_justifica', 'Fecha Justificada', 'date'),
   { id: 'fecha_carga', header: 'Carga', cell: ({ row }) => row.original.data.fecha_carga || '—' },
-  editableColumn<CertificadoView>('observaciones', 'Observaciones'),
+  editableColumn<CertificadoDraft>('observaciones', 'Observaciones'),
 ];
 
-const newCertificadoTemplate: CertificadoView = {
-  id_certificado: 0,
+const newCertificadoTemplate: CertificadoDraft = {
   id_inasistencia: null,
   id_agente: 0,
   agente: '',
@@ -26,11 +27,11 @@ const newCertificadoTemplate: CertificadoView = {
 };
 
 export default function CertificadosPage() {
-  const [data, setData] = useState<CertificadoView[]>([]);
+  const [data, setData] = useState<CertificadoDraft[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [refreshKey, setRefreshKey] = useState(Date.now());
-  
+
   const fetchCertificados = useCallback(async () => {
     setLoading(true);
     setError('');
@@ -43,7 +44,7 @@ export default function CertificadosPage() {
     if (err) {
       setError('Error al cargar certificados: ' + err.message);
     } else {
-      setData(rows as CertificadoView[] ?? []);
+      setData((rows as CertificadoDraft[] | null) ?? []);
       setRefreshKey(Date.now());
     }
     setLoading(false);
@@ -53,8 +54,8 @@ export default function CertificadosPage() {
     fetchCertificados();
   }, [fetchCertificados]);
 
-  const customBatchInsert = async (inserts: CertificadoView[]) => {
-    const successes: CertificadoView[] = [];
+  const customBatchInsert = async (inserts: CertificadoDraft[]) => {
+    const successes: CertificadoDraft[] = [];
     const failures: BatchError[] = [];
 
     const sanitizedInserts = inserts.map(i => ({
@@ -66,18 +67,18 @@ export default function CertificadosPage() {
     }));
 
     for (let i = 0; i < sanitizedInserts.length; i++) {
-        const row = sanitizedInserts[i];
-        const { data: inserted, error } = await supabase
-            .from('certificados')
-            .insert(row)
-            .select('id_certificado')
-            .single();
+      const row = sanitizedInserts[i];
+      const { data: inserted, error } = await supabase
+        .from('certificados')
+        .insert(row)
+        .select('id_certificado')
+        .single();
 
-        if (error) {
-            failures.push({ index: i, row: inserts[i], error: error.message });
-        } else {
-            successes.push({ ...inserts[i], id_certificado: inserted.id_certificado });
-        }
+      if (error) {
+        failures.push({ index: i, row: inserts[i], error: error.message });
+      } else {
+        successes.push({ ...inserts[i], id_certificado: inserted.id_certificado });
+      }
     }
 
     return { successes, failures };
@@ -88,13 +89,13 @@ export default function CertificadosPage() {
       <div className="mb-4">
         <h2 className="text-xl font-bold text-gray-800">Certificados</h2>
       </div>
-      
+
       {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">{error}</div>}
 
       {loading && data.length === 0 ? (
         <div className="flex items-center justify-center h-48 text-gray-500">Cargando registros...</div>
       ) : (
-        <DataTable<CertificadoView>
+        <DataTable<CertificadoDraft>
           key={refreshKey}
           tableName="certificados"
           pkField="id_certificado"

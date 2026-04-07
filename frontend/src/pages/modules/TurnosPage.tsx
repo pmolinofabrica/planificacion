@@ -1,11 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+﻿import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
 import DataTable, { editableColumn } from '../../components/table/DataTable';
 import type { TrackedRow } from '../../types/table';
 import type { ColumnDef } from '@tanstack/react-table';
 
 interface Turno {
-  id_turno: number;
+  id_turno?: number;
   tipo_turno: string;
   descripcion: string | null;
   cant_horas: number | null;
@@ -16,9 +16,9 @@ interface Turno {
 }
 
 const columns: ColumnDef<TrackedRow<Turno>>[] = [
-  { id: 'id_turno', header: 'ID', cell: ({ row }) => <span className="text-gray-400 text-xs">{row.original.data.id_turno || '—'}</span>, size: 50 },
+  { id: 'id_turno', header: 'ID', cell: ({ row }) => <span className="text-gray-400 text-xs">{row.original.data.id_turno ?? '—'}</span>, size: 50 },
   editableColumn<Turno>('tipo_turno', 'Tipo de turno'),
-  editableColumn<Turno>('descripcion', 'Descripción'),
+  editableColumn<Turno>('descripcion', 'Descripcion'),
   editableColumn<Turno>('cant_horas', 'Horas', 'number'),
   editableColumn<Turno>('hora_inicio', 'Inicio', 'time'),
   editableColumn<Turno>('hora_fin', 'Fin', 'time'),
@@ -27,7 +27,6 @@ const columns: ColumnDef<TrackedRow<Turno>>[] = [
 ];
 
 const newTurnoTemplate: Turno = {
-  id_turno: 0,
   tipo_turno: '',
   descripcion: null,
   cant_horas: null,
@@ -46,45 +45,30 @@ export default function TurnosPage() {
   const fetchTurnos = useCallback(async () => {
     setLoading(true);
     setError('');
-    const { data: rows, error: err } = await supabase
-      .from('turnos')
-      .select('*')
-      .order('id_turno');
+    const { data: rows, error: err } = await supabase.from('turnos').select('*').order('id_turno');
 
     if (err) {
       setError('Error al cargar turnos: ' + err.message);
     } else {
-      setData(rows ?? []);
+      setData((rows as Turno[] | null) ?? []);
       setRefreshKey(Date.now());
     }
     setLoading(false);
   }, []);
 
-  useEffect(() => {
-    fetchTurnos();
-  }, [fetchTurnos]);
+  useEffect(() => { fetchTurnos(); }, [fetchTurnos]);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-48 text-gray-400">
-        Cargando turnos...
-      </div>
-    );
+    return <div className="flex items-center justify-center h-48 text-gray-400">Cargando turnos...</div>;
   }
 
   if (error) {
-    return (
-      <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-        {error}
-      </div>
-    );
+    return <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">{error}</div>;
   }
 
   return (
     <div>
-      <div className="mb-4">
-        <h2 className="text-xl font-bold text-gray-800">Administrar Turnos</h2>
-      </div>
+      <div className="mb-4"><h2 className="text-xl font-bold text-gray-800">Administrar Turnos</h2></div>
       <DataTable<Turno>
         key={refreshKey}
         tableName="turnos"
