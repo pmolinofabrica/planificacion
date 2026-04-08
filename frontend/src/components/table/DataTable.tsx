@@ -43,7 +43,7 @@ export default function DataTable<T extends object>(props: DataTableProps<T>) {
           bulkRows, onBulkRowsConsumed, extraToolbar, customMassActions } = props;
   const [rows, setRows] = useState<TrackedRow<T>[]>(() =>
     initialData.map((d) => ({
-      _id: String(d[pkField]) ?? uuidv4(),
+      _id: d[pkField] !== null && d[pkField] !== undefined ? String(d[pkField]) : uuidv4(),
       _status: 'original',
       _original: d,
       data: { ...d },
@@ -120,19 +120,17 @@ export default function DataTable<T extends object>(props: DataTableProps<T>) {
     setRows((prev) => [newRow, ...prev]);
   };
 
-  const cloneRow = (originalData: T) => {
+  const cloneRow = useCallback((originalData: T) => {
     const newRow: TrackedRow<T> = {
       _id: uuidv4(),
       _status: 'new',
       _original: null,
       data: { ...originalData },
     };
-    // Ensure PK is reset
-    if (typeof (newRow.data as any)[pkField] === 'number') {
-      (newRow.data as any)[pkField] = 0;
-    }
+    // Leave the primary key empty so the backend can generate it on insert.
+    delete (newRow.data as Record<string, unknown>)[String(pkField)];
     setRows((prev) => [newRow, ...prev]);
-  };
+  }, [pkField]);
 
   const addMultipleRows = (count: number) => {
     const newRows = Array.from({ length: count }).map(() => ({
@@ -174,12 +172,18 @@ export default function DataTable<T extends object>(props: DataTableProps<T>) {
     setShowConfirm(false);
     let totalFailures: BatchError[] = [];
     let totalSuccesses = 0;
+    const sanitizeInsertRow = (row: T) => {
+      const next = { ...row } as T & Record<string, unknown>;
+      delete next[String(pkField)];
+      return next as T;
+    };
 
     // Order: Inserts → Updates → Deletes (Regla de Oro)
     if (diff.inserts.length > 0) {
+      const insertRows = diff.inserts.map(sanitizeInsertRow);
       const result = props.onBatchInsert 
-        ? await props.onBatchInsert(diff.inserts)
-        : await batchInsert(tableName, diff.inserts);
+        ? await props.onBatchInsert(insertRows)
+        : await batchInsert(tableName, insertRows);
       totalSuccesses += result.successes.length;
       totalFailures = [...totalFailures, ...result.failures];
     }
@@ -204,7 +208,7 @@ export default function DataTable<T extends object>(props: DataTableProps<T>) {
     }
   };
 
-  const handleRetry = async (_failures: BatchError[]) => {
+  const handleRetry = async () => {
     // Future: retry just the failed rows
     setBatchResult(null);
     onRefresh();
@@ -258,7 +262,7 @@ export default function DataTable<T extends object>(props: DataTableProps<T>) {
       size: 30,
     },
     ...columns,
-  ], [columns, selectedIds, enableClone]);
+  ], [columns, selectedIds, enableClone, cloneRow]);
 
   const table = useReactTable({
     data: visibleRows,
