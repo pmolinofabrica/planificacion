@@ -36,7 +36,7 @@ export default function CapacitacionesPage() {
       .order('fecha', { ascending: false })
       .limit(365);
     if (diasRes) {
-      setDiasOptions(diasRes.map((d) => ({ value: d.id_dia, label: d.fecha })));
+      setDiasOptions((diasRes as Array<{ id_dia: number; fecha: string }>).map((d) => ({ value: d.id_dia, label: d.fecha })));
     }
 
     const { data: turnosRes } = await supabase
@@ -44,7 +44,7 @@ export default function CapacitacionesPage() {
       .select('id_turno, tipo_turno')
       .eq('activo', true);
     if (turnosRes) {
-      setTurnosOptions(turnosRes.map((t) => ({ value: t.id_turno, label: t.tipo_turno })));
+      setTurnosOptions((turnosRes as Array<{ id_turno: number; tipo_turno: string }>).map((t) => ({ value: t.id_turno, label: t.tipo_turno })));
     }
 
     const { data: rows, error: err } = await supabase

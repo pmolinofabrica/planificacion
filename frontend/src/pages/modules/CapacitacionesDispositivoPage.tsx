@@ -12,7 +12,12 @@ export interface ViewCapDispo extends VistaCapacitacionesDispositivos {
 
 type CapOption = { value: number; label: string; meta?: { fecha: string; grupo: string | null } };
 
-type CapDispoDraft = Omit<ViewCapDispo, 'id_cap_dispo'> & { id_cap_dispo?: number };
+type CapDispoDraft = Omit<ViewCapDispo, 'id_cap_dispo' | 'id_cap' | 'id_dispositivo' | 'tiempo_minutos'> & {
+  id_cap_dispo?: number;
+  id_cap?: number;
+  id_dispositivo?: number;
+  tiempo_minutos?: number | null;
+};
 
 const newRowTemplate: CapDispoDraft = {
   id_cap: undefined,
@@ -57,9 +62,9 @@ export default function CapacitacionesDispositivoPage() {
 
     if (capsRes.data && diasRes.data) {
       const diasMap = new Map<number, string>();
-      for (const d of diasRes.data) diasMap.set(d.id_dia, d.fecha);
+      for (const d of diasRes.data as Array<{ id_dia: number; fecha: string }>) diasMap.set(d.id_dia, d.fecha);
 
-      const nextCapOptions = capsRes.data.map(c => ({
+      const nextCapOptions = (capsRes.data as Array<{ id_cap: number; tema: string | null; grupo: string | null; id_dia: number | null }>).map((c) => ({
         value: c.id_cap,
         label: `[${c.id_cap}] ${c.tema ?? ''}${c.id_dia ? ` (${diasMap.get(c.id_dia) || ''})` : ''}`,
         meta: { fecha: c.id_dia ? (diasMap.get(c.id_dia) || '') : '', grupo: c.grupo },
@@ -69,16 +74,22 @@ export default function CapacitacionesDispositivoPage() {
     }
 
     if (disposRes.data) {
-      setDispoOptions(disposRes.data.map(d => ({ value: d.id_dispositivo, label: d.nombre_dispositivo })));
+      setDispoOptions((disposRes.data as Array<{ id_dispositivo: number; nombre_dispositivo: string }>).map((d) => ({
+        value: d.id_dispositivo,
+        label: d.nombre_dispositivo,
+      })));
     }
 
     if (rowsRes.error) {
       setError('Error al cargar registros: ' + rowsRes.error.message);
     } else {
       const dispoMap = new Map<number, string>();
-      for (const opt of disposRes.data ?? []) dispoMap.set(opt.id_dispositivo, opt.nombre_dispositivo);
+      for (const opt of (disposRes.data ?? []) as Array<{ id_dispositivo: number; nombre_dispositivo: string }>) {
+        dispoMap.set(opt.id_dispositivo, opt.nombre_dispositivo);
+      }
 
-      const mapped = (rowsRes.data ?? []).map((r) => {
+      const rowsTyped = (rowsRes.data ?? []) as Array<{ id_cap: number; id_dispositivo: number | null; id_cap_dispo: number; tiempo_minutos: number | null }>;
+      const mapped = rowsTyped.map((r: { id_cap: number; id_dispositivo: number | null; id_cap_dispo: number; tiempo_minutos: number | null }) => {
         const cap = capMap.get(r.id_cap);
         return {
           ...r,
@@ -143,7 +154,7 @@ export default function CapacitacionesDispositivoPage() {
 
       return (
         <EditableCell
-          value={row.original.data.id_cap}
+          value={row.original.data.id_cap ?? null}
           onSave={handleSave}
           type="select"
           options={capOptions}
