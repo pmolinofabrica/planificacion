@@ -47,7 +47,7 @@ export default function PlanificacionPage() {
         .order('fecha');
       if (errDias) throw errDias;
 
-      const dOpts = (diasRes || []).map(d => ({
+      const dOpts = ((diasRes ?? []) as Array<{ id_dia: number; fecha: string; es_feriado: boolean | null }>).map((d) => ({
         value: d.id_dia,
         label: `${d.fecha}${d.es_feriado ? ' (Feriado)' : ''}`
       }));
@@ -61,7 +61,7 @@ export default function PlanificacionPage() {
         .order('id_turno');
       if (errTurnos) throw errTurnos;
 
-      const tOpts = (turnosRes || []).map(t => ({
+      const tOpts = ((turnosRes ?? []) as Array<{ id_turno: number; tipo_turno: string }>).map((t) => ({
         value: t.id_turno,
         label: t.tipo_turno
       }));
@@ -75,7 +75,7 @@ export default function PlanificacionPage() {
       }
 
       // 3. Cargar Planificaciones de los días de ese mes
-      const idDias = (diasRes || []).map(d => d.id_dia);
+      const idDias = ((diasRes ?? []) as Array<{ id_dia: number }>).map((d) => d.id_dia);
       const { data: planiRes, error: errPlani } = await supabase
         .from('planificacion')
         .select('*')

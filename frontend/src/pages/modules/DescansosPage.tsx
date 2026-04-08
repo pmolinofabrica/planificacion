@@ -39,7 +39,7 @@ export default function DescansosPage() {
     ]);
 
     if (agentesRes.data) {
-      setAgentesOptions(agentesRes.data.map(a => ({ value: a.id_agente, label: `${a.apellido}, ${a.nombre} (${a.dni})` })));
+      setAgentesOptions((agentesRes.data as Array<{ id_agente: number; nombre: string; apellido: string; dni: string }>).map((a) => ({ value: a.id_agente, label: `${a.apellido}, ${a.nombre} (${a.dni})` })));
     }
 
     if (descRes.error) {

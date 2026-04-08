@@ -138,10 +138,11 @@ export default function ConvocatoriasPage() {
 
     if (err) { setError('Error al buscar planificaciones.'); }
     else {
+      const planesTyped = (planes ?? []) as PlaniOption[];
       const filtered = buscarTurno
-        ? (planes ?? []).filter(p => p.tipo_turno?.toLowerCase().includes(buscarTurno.toLowerCase()))
-        : (planes ?? []);
-      setPlanesEncontrados(filtered as PlaniOption[]);
+        ? planesTyped.filter((p: PlaniOption) => p.tipo_turno?.toLowerCase().includes(buscarTurno.toLowerCase()))
+        : planesTyped;
+      setPlanesEncontrados(filtered);
     }
     setBuscando(false);
   };
