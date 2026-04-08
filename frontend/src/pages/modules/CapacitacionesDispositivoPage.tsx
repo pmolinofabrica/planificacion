@@ -88,7 +88,8 @@ export default function CapacitacionesDispositivoPage() {
         dispoMap.set(opt.id_dispositivo, opt.nombre_dispositivo);
       }
 
-      const mapped = (rowsRes.data ?? [] as Array<{ id_cap: number; id_dispositivo: number | null; id_cap_dispo: number; tiempo_minutos: number | null }>) .map((r) => {
+      const rowsTyped = (rowsRes.data ?? []) as Array<{ id_cap: number; id_dispositivo: number | null; id_cap_dispo: number; tiempo_minutos: number | null }>;
+      const mapped = rowsTyped.map((r: { id_cap: number; id_dispositivo: number | null; id_cap_dispo: number; tiempo_minutos: number | null }) => {
         const cap = capMap.get(r.id_cap);
         return {
           ...r,
@@ -153,7 +154,7 @@ export default function CapacitacionesDispositivoPage() {
 
       return (
         <EditableCell
-          value={row.original.data.id_cap}
+          value={row.original.data.id_cap ?? null}
           onSave={handleSave}
           type="select"
           options={capOptions}
