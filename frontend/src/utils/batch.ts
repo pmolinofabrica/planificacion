@@ -87,24 +87,32 @@ export async function batchDelete(
   const failures: BatchError[] = [];
 
   // Supabase supports "in" filter for batch delete
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from(table)
     .delete()
+    .select(String(pkField))
     .in(pkField, ids);
 
   if (error) {
     // If the entire batch fails, try individually
     for (let i = 0; i < ids.length; i++) {
-      const { error: singleErr } = await supabase
+      const { data: singleData, error: singleErr } = await supabase
         .from(table)
         .delete()
+        .select(String(pkField))
         .eq(pkField, ids[i]);
 
       if (singleErr) {
         failures.push({ index: i, row: ids[i], error: singleErr.message });
+      } else if (!singleData || singleData.length === 0) {
+        failures.push({ index: i, row: ids[i], error: `No se eliminó ninguna fila en ${table}.` });
       } else {
         successes.push(ids[i]);
       }
+    }
+  } else if (!data || data.length === 0) {
+    for (let i = 0; i < ids.length; i++) {
+      failures.push({ index: i, row: ids[i], error: `No se eliminó ninguna fila en ${table}.` });
     }
   } else {
     successes.push(...ids);
