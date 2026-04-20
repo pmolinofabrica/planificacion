@@ -75,9 +75,14 @@ export default function DescansosPage() {
     setAsignando(true);
     setError('');
 
-    const skipped = selected.filter((d) => typeof d.id_desc !== 'number');
+    const skipped = selected.filter(
+      (d) => typeof d.id_desc !== 'number' || typeof d.id_agente !== 'number' || d.id_agente <= 0
+    );
     const toUpdate = selected
-      .filter((d): d is DescansoDraft & { id_desc: number } => typeof d.id_desc === 'number' && d.estado !== 'asignado')
+      .filter(
+        (d): d is DescansoDraft & { id_desc: number } =>
+          typeof d.id_desc === 'number' && typeof d.id_agente === 'number' && d.id_agente > 0 && d.estado !== 'asignado'
+      )
       .map((d) => ({ id: d.id_desc, changes: { estado: 'asignado' as const } }));
 
     if (toUpdate.length === 0) {
@@ -105,7 +110,7 @@ export default function DescansosPage() {
 
       const descansosAsignados = selected.filter(
         (d): d is DescansoDraft & { id_desc: number } =>
-          typeof d.id_desc === 'number' && d.estado !== 'asignado'
+          typeof d.id_desc === 'number' && typeof d.id_agente === 'number' && d.id_agente > 0 && d.estado !== 'asignado'
       );
 
       const convocatoriaWarnings: string[] = [];
