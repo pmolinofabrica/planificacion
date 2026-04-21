@@ -884,6 +884,8 @@ func_asignar_descanso_aprobado
 CREATE OR REPLACE FUNCTION public.func_asignar_descanso_aprobado()
  RETURNS trigger
  LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO public
 AS $function$
 BEGIN
     INSERT INTO convocatoria (id_plani, id_agente, id_turno, fecha_convocatoria, estado)
@@ -897,8 +899,10 @@ BEGIN
     JOIN dias d ON p.id_dia = d.id_dia
     JOIN turnos t ON p.id_turno = t.id_turno
     WHERE d.fecha = NEW.dia_solicitado
-    AND t.tipo_turno = 'descanso'
-    LIMIT 1;
+      AND lower(trim(t.tipo_turno)) = 'descanso'
+    ORDER BY p.id_plani ASC
+    LIMIT 1
+    ON CONFLICT (id_plani, id_agente) DO NOTHING;
     
     UPDATE descansos
     SET fecha_respuesta = CURRENT_TIMESTAMP

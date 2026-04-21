@@ -61,6 +61,7 @@ export async function batchUpdate<T extends object>(
     const { error } = await supabase
       .from(table)
       .update(changes)
+      .select(String(pkField))
       .eq(pkField, id);
 
     if (error) {

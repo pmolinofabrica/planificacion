@@ -4,8 +4,15 @@ import DataTable, { editableColumn } from '../../components/table/DataTable';
 import type { TrackedRow } from '../../types/table';
 import type { ColumnDef } from '@tanstack/react-table';
 import type { Descanso } from '../../types/database';
+import { batchUpdate } from '../../utils/batch';
 
 type DescansoDraft = Omit<Descanso, 'id_desc'> & { id_desc?: number };
+type ConvocatoriaPlani = {
+  id_plani: number;
+  id_turno: number;
+  fecha: string;
+  tipo_turno: string;
+};
 
 const newDescansoTemplate: DescansoDraft = {
   id_agente: 0,
@@ -16,11 +23,16 @@ const newDescansoTemplate: DescansoDraft = {
   observaciones: null,
 };
 
+const normalizeDate = (value: string | null | undefined) => {
+  if (!value) return '';
+  return value.toString().split('T')[0];
+};
+
 export default function DescansosPage() {
   const [data, setData] = useState<DescansoDraft[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [refreshKey, setRefreshKey] = useState(Date.now());
+  const [refreshVersion, setRefreshVersion] = useState(0);
   const [filtroMes, setFiltroMes] = useState(new Date().getMonth() + 1);
   const [agentesOptions, setAgentesOptions] = useState<{value: number, label: string}[]>([]);
   const [asignando, setAsignando] = useState(false);
@@ -52,7 +64,7 @@ export default function DescansosPage() {
       }));
       setData(formattedData as DescansoDraft[]);
     }
-    setRefreshKey(Date.now());
+    setRefreshVersion((v) => v + 1);
     setLoading(false);
   }, [filtroMes]);
 
@@ -63,18 +75,109 @@ export default function DescansosPage() {
     setAsignando(true);
     setError('');
 
-    const toUpdate = selected.filter(d => d.estado !== 'asignado').map(d => ({ id_desc: d.id_desc, estado: 'asignado' }));
+    const skipped = selected.filter(
+      (d) => typeof d.id_desc !== 'number' || typeof d.id_agente !== 'number' || d.id_agente <= 0
+    );
+    const toUpdate = selected
+      .filter(
+        (d): d is DescansoDraft & { id_desc: number } =>
+          typeof d.id_desc === 'number' && typeof d.id_agente === 'number' && d.id_agente > 0 && d.estado !== 'asignado'
+      )
+      .map((d) => ({ id: d.id_desc, changes: { estado: 'asignado' as const } }));
+
     if (toUpdate.length === 0) {
       setAsignando(false);
+      if (skipped.length > 0) {
+        setError('No se pudieron asignar filas sin ID de descanso.');
+      }
       return;
     }
 
     try {
-      const { error: err } = await supabase.from('descansos').upsert(toUpdate, { onConflict: 'id_desc' });
-      if (err) throw err;
+      const result = await batchUpdate<DescansoDraft>('descansos', 'id_desc', toUpdate);
+      if (result.failures.length > 0) {
+        throw new Error(result.failures[0]?.error || 'Algunas filas no pudieron actualizarse');
+      }
+
+      const updatedIds = new Set(toUpdate.map((u) => String(u.id)));
+      setData((prev) =>
+        prev.map((row) =>
+          row.id_desc !== undefined && updatedIds.has(String(row.id_desc))
+            ? { ...row, estado: 'asignado' }
+            : row
+        )
+      );
+
+      const descansosAsignados = selected.filter(
+        (d): d is DescansoDraft & { id_desc: number } =>
+          typeof d.id_desc === 'number' && typeof d.id_agente === 'number' && d.id_agente > 0 && d.estado !== 'asignado'
+      );
+
+      const convocatoriaWarnings: string[] = [];
+
+      for (const descanso of descansosAsignados) {
+        const diaSolicitado = normalizeDate(descanso.dia_solicitado);
+
+        if (!descanso.id_agente || !diaSolicitado) {
+          convocatoriaWarnings.push(`ID ${descanso.id_desc}: faltan datos para crear convocatoria.`);
+          continue;
+        }
+
+        const { data: planificacion, error: planError } = await supabase
+          .from('vista_planificacion_anio')
+          .select('id_plani, id_turno, fecha, tipo_turno')
+          .eq('fecha', diaSolicitado)
+          .in('tipo_turno', ['descanso', 'Descanso'])
+          .order('id_plani', { ascending: true });
+
+        if (planError) {
+          convocatoriaWarnings.push(`ID ${descanso.id_desc}: error buscando planificación (${planError.message}).`);
+          continue;
+        }
+
+        const planMatch = (planificacion ?? [])[0] as ConvocatoriaPlani | undefined;
+        if (!planMatch) {
+          convocatoriaWarnings.push(`ID ${descanso.id_desc}: no existe planificación de descanso para ${diaSolicitado}.`);
+          continue;
+        }
+
+        const { data: existingConvocatoria, error: existingError } = await supabase
+          .from('convocatoria')
+          .select('id_convocatoria')
+          .eq('id_plani', planMatch.id_plani)
+          .eq('id_agente', descanso.id_agente)
+          .maybeSingle();
+
+        if (existingError) {
+          convocatoriaWarnings.push(`ID ${descanso.id_desc}: no se pudo verificar si ya existía convocatoria (${existingError.message}).`);
+          continue;
+        }
+
+        if (existingConvocatoria) {
+          continue;
+        }
+
+        const { error: insertError } = await supabase.from('convocatoria').insert({
+          id_plani: planMatch.id_plani,
+          id_agente: descanso.id_agente,
+          id_turno: planMatch.id_turno,
+          fecha_convocatoria: diaSolicitado,
+          estado: 'vigente',
+        });
+
+        if (insertError) {
+          convocatoriaWarnings.push(`ID ${descanso.id_desc}: no se pudo crear la convocatoria (${insertError.message}).`);
+        }
+      }
+
       await fetchData();
+
+      if (convocatoriaWarnings.length > 0) {
+        setError(`Asignación completada con observaciones: ${convocatoriaWarnings.join(' ')}`);
+      }
     } catch (e: any) {
-      setError('Error al asignar masivamente: ' + e.message);
+      const suffix = skipped.length > 0 ? ' Algunas filas no tenían ID de descanso.' : '';
+      setError('Error al asignar masivamente: ' + e.message + suffix);
     } finally {
       setAsignando(false);
     }
@@ -119,7 +222,7 @@ export default function DescansosPage() {
         <div className="flex items-center justify-center h-48 text-gray-500">Cargando registros...</div>
       ) : (
         <DataTable<DescansoDraft>
-          key={refreshKey}
+          key={refreshVersion}
           tableName="descansos"
           pkField="id_desc"
           initialData={data}
