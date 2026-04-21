@@ -36,11 +36,13 @@ interface DataTableProps<T extends object> {
     onClick: (selectedData: T[]) => void | Promise<void>;
     className?: string; // extra tailwind classes like bg-green-600
   }>;
+  /** Delete behavior for the built-in delete button */
+  deleteMode?: 'batch' | 'immediate';
 }
 
 export default function DataTable<T extends object>(props: DataTableProps<T>) {
   const { tableName, pkField, initialData, columns, onRefresh, buildNewRow, enableClone,
-          bulkRows, onBulkRowsConsumed, extraToolbar, customMassActions } = props;
+          bulkRows, onBulkRowsConsumed, extraToolbar, customMassActions, deleteMode = 'batch' } = props;
   const [rows, setRows] = useState<TrackedRow<T>[]>(() =>
     initialData.map((d) => ({
       _id: d[pkField] !== null && d[pkField] !== undefined ? String(d[pkField]) : uuidv4(),
@@ -153,6 +155,31 @@ export default function DataTable<T extends object>(props: DataTableProps<T>) {
       )
     );
     setSelectedIds(new Set());
+  };
+
+  const deleteSelectedImmediately = async () => {
+    const selectedRows = visibleRows.filter((r) => selectedIds.has(r._id));
+    const selectedPkValues = selectedRows
+      .map((r) => r.data[pkField])
+      .filter((value) => value !== null && value !== undefined);
+
+    if (selectedPkValues.length === 0) {
+      markDeleted();
+      return;
+    }
+
+    const result = await batchDelete(tableName, String(pkField), selectedPkValues);
+
+    if (result.failures.length > 0) {
+      setBatchResult({ successes: result.successes.length, failures: result.failures });
+      return;
+    }
+
+    const deletedPkSet = new Set(result.successes.map((id) => String(id)));
+    setRows((prev) => prev.filter((row) => !deletedPkSet.has(String(row.data[pkField]))));
+    setSelectedIds(new Set());
+    setBatchResult({ successes: result.successes.length, failures: [] });
+    onRefresh();
   };
 
   const toggleSelect = (id: string) => {
@@ -317,7 +344,7 @@ export default function DataTable<T extends object>(props: DataTableProps<T>) {
               </button>
             ))}
             <button
-              onClick={markDeleted}
+              onClick={deleteMode === 'immediate' ? deleteSelectedImmediately : markDeleted}
               className="px-3 py-1.5 text-xs font-bold font-headline uppercase tracking-wide bg-error/10 text-error rounded-lg hover:bg-error/20 transition-colors"
             >
               Eliminar {selectedIds.size}

@@ -225,6 +225,7 @@ export default function DescansosPage() {
           key={refreshVersion}
           tableName="descansos"
           pkField="id_desc"
+          deleteMode="immediate"
           initialData={data}
           columns={columns}
           onRefresh={fetchData}
