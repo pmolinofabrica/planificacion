@@ -228,6 +228,7 @@ export interface SaldoDashboardView {
   acumulado_anual_obj_12w: number;
   horas_manana: number;
   horas_tarde: number;
+  horas_apertura_publico?: number;
   horas_finde: number;
   horas_otros: number;
 }
