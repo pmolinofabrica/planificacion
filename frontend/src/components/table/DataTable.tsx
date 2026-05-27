@@ -9,7 +9,7 @@ import {
 import type { ColumnDef, SortingState, ColumnFiltersState } from '@tanstack/react-table';
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import type { TrackedRow, BatchError } from '../../types/table';
+import type { TrackedRow, BatchError, BatchResult } from '../../types/table';
 import { computeDiff } from '../../utils/diff';
 import { batchInsert, batchUpdate, batchDelete } from '../../utils/batch';
 import EditableCell from './EditableCell';
@@ -24,6 +24,7 @@ interface DataTableProps<T extends object> {
   onRefresh: () => void;
   buildNewRow: () => T;
   onBatchInsert?: (inserts: T[]) => Promise<{ successes: T[]; failures: BatchError[] }>;
+  onBatchUpdate?: (updates: { id: unknown; changes: Partial<T> }[], rows: Map<string, TrackedRow<T>>) => Promise<BatchResult<{ id: unknown }>>;
   enableClone?: boolean;
   /** Pre-built rows to inject (e.g. Grupo A/B bulk), consumed once */
   bulkRows?: T[];
@@ -107,6 +108,38 @@ export default function DataTable<T extends object>(props: DataTableProps<T>) {
           ...row,
           data: updatedData,
           _status: row._status === 'new' ? 'new' : isModified ? 'modified' : 'original',
+        };
+      })
+    );
+  }, []);
+
+  // Same as updateCell but also syncs _original so the field is NOT picked up by computeDiff.
+  // Use for display-only (view-computed) fields that aren't actual DB columns.
+  const silentUpdateCell = useCallback((rowId: string, field: keyof T, rawValue: string) => {
+    setRows((prev) =>
+      prev.map((row) => {
+        if (row._id !== rowId) return row;
+        const originalValue = row._original ? row._original[field] : undefined;
+        let typedValue: unknown = rawValue;
+
+        if (rawValue === 'true') {
+           typedValue = true;
+        } else if (rawValue === 'false') {
+           typedValue = false;
+        } else if (typeof originalValue === 'number') {
+           typedValue = rawValue === '' ? null : Number(rawValue);
+        } else if (typeof originalValue === 'boolean') {
+           typedValue = rawValue === 'true';
+        } else if (originalValue === null && rawValue === '') {
+           typedValue = null;
+        }
+
+        return {
+          ...row,
+          data: { ...row.data, [field]: typedValue },
+          // Keep _original in sync so computeDiff ignores this field
+          _original: row._original ? { ...row._original, [field]: typedValue } : null,
+          // Don't change _status — only real DB edits should trigger 'modified'
         };
       })
     );
@@ -216,7 +249,10 @@ export default function DataTable<T extends object>(props: DataTableProps<T>) {
     }
 
     if (diff.updates.length > 0) {
-      const result = await batchUpdate(tableName, String(pkField), diff.updates);
+      const rowsById = new Map(rows.filter(r => r._status !== 'deleted').map(r => [r._id, r]));
+      const result = props.onBatchUpdate
+        ? await props.onBatchUpdate(diff.updates, rowsById)
+        : await batchUpdate(tableName, String(pkField), diff.updates);
       totalSuccesses += result.successes.length;
       totalFailures = [...totalFailures, ...result.failures];
     }
@@ -244,14 +280,32 @@ export default function DataTable<T extends object>(props: DataTableProps<T>) {
   const tableColumns: ColumnDef<TrackedRow<T>>[] = useMemo(() => [
     {
       id: 'select',
-      header: ({ table }) => (
-        <input
-          type="checkbox"
-          checked={table.getIsAllPageRowsSelected()}
-          onChange={table.getToggleAllRowsSelectedHandler()}
-          className="cursor-pointer"
-        />
-      ),
+      header: ({ table }) => {
+        const pageRows = table.getRowModel().rows;
+        const allSelected = pageRows.length > 0 && pageRows.every(row => selectedIds.has(row.original._id));
+        return (
+          <input
+            type="checkbox"
+            checked={allSelected}
+            onChange={(e) => {
+              if (e.target.checked) {
+                setSelectedIds(prev => {
+                  const next = new Set(prev);
+                  for (const row of pageRows) next.add(row.original._id);
+                  return next;
+                });
+              } else {
+                setSelectedIds(prev => {
+                  const next = new Set(prev);
+                  for (const row of pageRows) next.delete(row.original._id);
+                  return next;
+                });
+              }
+            }}
+            className="cursor-pointer"
+          />
+        );
+      },
       cell: ({ row }) => (
         <input
           type="checkbox"
@@ -309,7 +363,7 @@ export default function DataTable<T extends object>(props: DataTableProps<T>) {
         pageSize: 50,
       },
     },
-    meta: { updateCell },
+    meta: { updateCell, silentUpdateCell },
   });
 
   return (
