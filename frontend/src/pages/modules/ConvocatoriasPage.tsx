@@ -78,6 +78,9 @@ export default function ConvocatoriasPage() {
   const [showCompletar, setShowCompletar] = useState(false);
   const [completarFecha, setCompletarFecha] = useState('');
   const [completarPlani, setCompletarPlani] = useState<number | null>(null);
+  const [popupCell, setPopupCell] = useState<{ dayNum: string; turnoAbbr: string } | null>(null);
+  const [popupRows, setPopupRows] = useState<ViewConvocatoria[]>([]);
+  const [popupSaldos, setPopupSaldos] = useState<Record<number, number>>({});
 
   const agentesOptions = useMemo(() =>
     agentes.map(a => ({
@@ -362,6 +365,54 @@ export default function ConvocatoriasPage() {
   const countAgentesPorDiaYGrupo = (diaSemana: number, grupo: 'manana' | 'tarde') =>
     agentesGruposDias.filter(a => a.dia_semana === diaSemana && a.grupo === grupo).length;
 
+  const openPopup = async (dayNum: string, turnoAbbr: string) => {
+    const entries = planiByKey.get(`${dayNum}|${turnoAbbr}`) ?? [];
+    if (entries.length === 0) return;
+    const planiIds = new Set(entries.map(e => e.id_plani));
+    const rows = data.filter(c => planiIds.has(c.id_plani));
+    setPopupRows(rows);
+    setPopupCell({ dayNum, turnoAbbr });
+    const agentIds = [...new Set(rows.map(r => r.id_agente))];
+    if (agentIds.length > 0) {
+      const { data: saldos } = await supabase
+        .from('vista_dashboard_saldos')
+        .select('id_agente, diferencia_saldo_48')
+        .eq('anio', currentYear)
+        .eq('mes', filtroMes)
+        .in('id_agente', agentIds);
+      const map: Record<number, number> = {};
+      if (saldos) {
+        for (const s of (saldos as Array<{ id_agente: number; diferencia_saldo_48: number | null }>)) {
+          map[s.id_agente] = Number((s.diferencia_saldo_48 ?? 0).toFixed(1));
+        }
+      }
+      setPopupSaldos(map);
+    }
+  };
+
+  const togglePopupEstado = (idConvocatoria: number) => {
+    setPopupRows(prev => prev.map(r =>
+      r.id_convocatoria === idConvocatoria
+        ? { ...r, estado: r.estado === 'cancelada' ? 'vigente' : 'cancelada' }
+        : r
+    ));
+  };
+
+  const aplicarPopupCambios = () => {
+    const changedRows = popupRows.filter(r => {
+      const orig = data.find(d => d.id_convocatoria === r.id_convocatoria);
+      return orig && orig.estado !== r.estado;
+    });
+    if (changedRows.length > 0) {
+      setData(prev => prev.map(d => {
+        const updated = changedRows.find(c => c.id_convocatoria === d.id_convocatoria);
+        return updated ?? d;
+      }));
+    }
+    setPopupCell(null);
+    setPopupRows([]);
+  };
+
   const [bulkPendingRows, setBulkPendingRows] = useState<ViewConvocatoria[]>([]);
 
   const columns = useMemo<ColumnDef<TrackedRow<ViewConvocatoria>>[]>(() => {
@@ -467,13 +518,18 @@ export default function ConvocatoriasPage() {
                       return (
                         <td key={d} className="py-1.5 px-2 text-center font-mono text-[15px]">
                           {entries.length === 1 ? (
-                            <span className="font-semibold">{entries[0].count}</span>
+                            <span
+                              onClick={() => openPopup(d, t)}
+                              className="font-semibold cursor-pointer hover:underline hover:text-primary transition-colors"
+                            >{entries[0].count}</span>
                           ) : (
                             <div className="flex flex-wrap gap-0.5 justify-center">
                               {entries.map((e, i) => (
-                                <span key={e.id_plani} className={`px-1 rounded text-[13px] font-bold leading-tight ${ENTRY_COLORS[i % ENTRY_COLORS.length]}`}>
-                                  {e.count}
-                                </span>
+                                <span
+                                  key={e.id_plani}
+                                  onClick={() => openPopup(d, t)}
+                                  className={`px-1 rounded text-[13px] font-bold leading-tight cursor-pointer hover:opacity-80 transition-opacity ${ENTRY_COLORS[i % ENTRY_COLORS.length]}`}
+                                >{e.count}</span>
                               ))}
                             </div>
                           )}
@@ -645,6 +701,69 @@ export default function ConvocatoriasPage() {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+      {popupCell && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center pt-10 bg-black/30 backdrop-blur-sm" onClick={() => { setPopupCell(null); setPopupRows([]); }}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl p-6 max-h-[80vh] overflow-y-auto m-4" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-headline text-lg font-bold text-gray-800">
+                {popupCell.turnoAbbr} — Día {popupCell.dayNum}
+              </h3>
+              <button onClick={() => { setPopupCell(null); setPopupRows([]); }} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-outline-variant/20">
+                    <th className="py-2 px-2 font-semibold text-on-surface-variant">Agente</th>
+                    <th className="py-2 px-2 font-semibold text-on-surface-variant text-right w-16">Saldo</th>
+                    <th className="py-2 px-2 font-semibold text-on-surface-variant text-center w-24">Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[...popupRows].sort((a, b) => (popupSaldos[b.id_agente] ?? 0) - (popupSaldos[a.id_agente] ?? 0)).map(r => (
+                    <tr key={r.id_convocatoria} className="border-b border-outline-variant/10 hover:bg-surface-container-low transition-colors">
+                      <td className="py-1.5 px-2 font-medium">{r.agente}</td>
+                      <td className="py-1.5 px-2 text-right font-mono text-[12px] font-semibold">
+                        {popupSaldos[r.id_agente] !== undefined ? (
+                          <span className={popupSaldos[r.id_agente] < 0 ? 'text-red-600' : popupSaldos[r.id_agente] > 0 ? 'text-emerald-600' : 'text-gray-500'}>
+                            {popupSaldos[r.id_agente].toFixed(1)}
+                          </span>
+                        ) : <span className="text-gray-300">-</span>}
+                      </td>
+                      <td className="py-1.5 px-2 text-center">
+                        <button
+                          onClick={() => togglePopupEstado(r.id_convocatoria)}
+                          className={`px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider transition-all border ${
+                            r.estado === 'cancelada'
+                              ? 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100'
+                              : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                          }`}
+                        >
+                          {r.estado === 'cancelada' ? 'Cancelada' : 'Vigente'}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                onClick={() => { setPopupCell(null); setPopupRows([]); }}
+                className="px-4 py-2 rounded-lg text-xs font-bold text-gray-500 hover:text-gray-700 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={aplicarPopupCambios}
+                className="px-4 py-2 rounded-lg text-xs font-bold bg-primary text-white hover:bg-primary/90 transition-colors"
+              >
+                Siguiente
+              </button>
+            </div>
           </div>
         </div>
       )}

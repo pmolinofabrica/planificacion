@@ -208,7 +208,8 @@ export default function SaldosPage() {
         .from('datos_personales')
         .select('id_agente, dni, apellido, nombre, fecha_alta, fecha_baja')
         .eq('cohorte', anio)
-        .eq('activo', true),
+        .eq('activo', true)
+        .order('apellido'),
       supabase
         .from('config_cohorte')
         .select('fecha_inicio, fecha_fin')
