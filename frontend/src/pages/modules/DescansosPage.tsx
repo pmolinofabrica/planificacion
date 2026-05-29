@@ -326,7 +326,6 @@ export default function DescansosPage() {
     setSavingGrid(true);
     setError('');
     const nextMes = filtroMes === 12 ? 1 : filtroMes + 1;
-    const nextYear = filtroMes === 12 ? new Date().getFullYear() + 1 : new Date().getFullYear();
     const errors: string[] = [];
 
     for (const key of pendingRemoves) {
