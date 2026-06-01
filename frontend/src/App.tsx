@@ -14,6 +14,8 @@ import CapacitacionesPage from './pages/modules/CapacitacionesPage';
 import DispositivosPage from './pages/modules/DispositivosPage';
 import CapacitacionesDispositivoPage from './pages/modules/CapacitacionesDispositivoPage';
 import SaldosPage from './pages/modules/SaldosPage';
+import ModuleDrawer from './components/layout/ModuleDrawer';
+import CertificadosPanel from './components/modules/CertificadosPanel';
 import { supabase } from './lib/supabase';
 
 // Menu grouped according to requirements
@@ -43,9 +45,17 @@ const NAV_GROUPS = [
   ],
 ];
 
+// Modules available in the side panel. Add new entries here to surface more panels.
+const MODULES = [
+  { id: 'certificados', label: 'Certificados', icon: 'verified' },
+] as const;
+
+type ModuleId = typeof MODULES[number]['id'];
+
 function Layout({ children }: { children: React.ReactNode }) {
   const { session } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [openModule, setOpenModule] = useState<ModuleId | null>(null);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -53,6 +63,12 @@ function Layout({ children }: { children: React.ReactNode }) {
 
   const closeSidebar = () => setIsSidebarOpen(false);
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
+
+  const openModulePanel = (id: ModuleId) => {
+    setOpenModule(id);
+    setIsSidebarOpen(false);
+  };
+  const closeModulePanel = () => setOpenModule(null);
 
   return (
     <div className="min-h-screen bg-surface font-body text-on-surface">
@@ -86,7 +102,7 @@ function Layout({ children }: { children: React.ReactNode }) {
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="px-6 mb-8 flex justify-between items-center md:block">
+        <div className="px-6 mb-6 flex justify-between items-center md:block">
           <div>
             <h1 className="text-white text-2xl font-black">El Molino</h1>
             <p className="font-headline uppercase tracking-widest text-[10px] font-bold text-slate-400 mt-1">Residencias Culturales</p>
@@ -97,6 +113,29 @@ function Layout({ children }: { children: React.ReactNode }) {
           >
             <span className="material-symbols-outlined text-xl">close</span>
           </button>
+        </div>
+
+        <div className="px-4 mb-4">
+          <p className="font-headline uppercase tracking-widest text-[9px] font-bold text-slate-500 mb-2 px-2">Paneles</p>
+          <div className="flex flex-col gap-1">
+            {MODULES.map((m) => {
+              const active = openModule === m.id;
+              return (
+                <button
+                  key={m.id}
+                  onClick={() => openModulePanel(m.id)}
+                  className={`flex items-center gap-3 px-4 py-3 mx-2 rounded-lg transition-all duration-200 active:translate-x-1 ${
+                    active
+                      ? 'text-white bg-gradient-to-r from-primary to-primary-container shadow-md'
+                      : 'text-slate-400 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-base">{m.icon}</span>
+                  <span className="font-headline uppercase tracking-widest text-[10px] font-bold">{m.label}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         <nav className="flex-1 overflow-y-auto no-scrollbar">
@@ -148,6 +187,14 @@ function Layout({ children }: { children: React.ReactNode }) {
           {children}
         </div>
       </main>
+
+      <ModuleDrawer
+        isOpen={openModule === 'certificados'}
+        onClose={closeModulePanel}
+        title="Panel de Certificados"
+      >
+        <CertificadosPanel />
+      </ModuleDrawer>
     </div>
   );
 }

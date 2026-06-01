@@ -15,6 +15,12 @@ EXECUTE FUNCTION public.func_certificado_aprobado()
 -- Table: certificados | Trigger: trg_certificado_rechazado | Event: UPDATE
 EXECUTE FUNCTION public.func_certificado_rechazado()
 
+-- Table: certificados | Trigger: trg_sync_certificado_presentado_del | Event: DELETE
+EXECUTE FUNCTION public.func_sync_certificado_presentado()
+
+-- Table: certificados | Trigger: trg_sync_certificado_presentado_ins | Event: INSERT
+EXECUTE FUNCTION public.func_sync_certificado_presentado()
+
 -- Table: convocatoria | Trigger: trg_limpiar_asignaciones_del | Event: DELETE
 EXECUTE FUNCTION public.fn_limpiar_asignaciones_huerfanas()
 

@@ -90,6 +90,22 @@ export interface Database {
           cant_horas: number | null
         }
       }
+      vista_inasistencias_completa: {
+        Row: {
+          id_inasistencia: number
+          id_agente: number
+          agente: string
+          dni: string
+          fecha_inasistencia: string
+          anio: number
+          mes: number
+          motivo: string
+          estado: string | null
+          requiere_certificado: boolean | null
+          observaciones: string | null
+          fecha_aviso: string | null
+        }
+      }
     }
     Functions: {
       create_convocatoria: {

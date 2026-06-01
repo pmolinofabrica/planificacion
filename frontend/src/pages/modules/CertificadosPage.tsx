@@ -4,6 +4,7 @@ import DataTable, { editableColumn } from '../../components/table/DataTable';
 import type { TrackedRow, BatchError } from '../../types/table';
 import type { ColumnDef } from '@tanstack/react-table';
 import type { CertificadoView } from '../../types/database';
+import CertificadosPanel, { CERTIFICADOS_CHANGED_EVENT } from '../../components/modules/CertificadosPanel';
 
 type CertificadoDraft = Omit<CertificadoView, 'id_certificado'> & { id_certificado?: number };
 
@@ -30,7 +31,7 @@ export default function CertificadosPage() {
   const [data, setData] = useState<CertificadoDraft[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [refreshKey, setRefreshKey] = useState(Date.now());
+  const [refreshKey, setRefreshKey] = useState(() => Date.now());
 
   const fetchCertificados = useCallback(async () => {
     setLoading(true);
@@ -52,6 +53,12 @@ export default function CertificadosPage() {
 
   useEffect(() => {
     fetchCertificados();
+  }, [fetchCertificados]);
+
+  useEffect(() => {
+    const onChanged = () => fetchCertificados();
+    window.addEventListener(CERTIFICADOS_CHANGED_EVENT, onChanged);
+    return () => window.removeEventListener(CERTIFICADOS_CHANGED_EVENT, onChanged);
   }, [fetchCertificados]);
 
   const customBatchInsert = async (inserts: CertificadoDraft[]) => {
@@ -88,6 +95,10 @@ export default function CertificadosPage() {
     <div>
       <div className="mb-4">
         <h2 className="text-xl font-bold text-gray-800">Certificados</h2>
+      </div>
+
+      <div className="mb-6">
+        <CertificadosPanel onChange={fetchCertificados} />
       </div>
 
       {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">{error}</div>}
