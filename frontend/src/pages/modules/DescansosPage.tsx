@@ -28,6 +28,52 @@ const normalizeDate = (value: string | null | undefined) => {
   return value.toString().split('T')[0];
 };
 
+interface CohortAgentMeta {
+  id_agente: number;
+  fecha_alta: string | null;
+  fecha_baja: string | null;
+}
+
+interface CohortConfig {
+  fecha_inicio: string;
+  fecha_fin: string | null;
+}
+
+const startOfDay = (value: string) => new Date(`${value.slice(0, 10)}T00:00:00`);
+
+const getProratedObjective = (
+  year: number,
+  month: number,
+  baseObjective: number,
+  cohortConfig: CohortConfig | null,
+  resident: CohortAgentMeta
+) => {
+  const monthStart = new Date(year, month - 1, 1);
+  const monthEnd = new Date(year, month, 0);
+  const monthDays = monthEnd.getDate();
+
+  const cohortStart = cohortConfig?.fecha_inicio ? startOfDay(cohortConfig.fecha_inicio) : null;
+  const cohortEnd = cohortConfig?.fecha_fin ? startOfDay(cohortConfig.fecha_fin) : null;
+  const residentStart = resident.fecha_alta ? startOfDay(resident.fecha_alta) : null;
+  const residentEnd = resident.fecha_baja ? startOfDay(resident.fecha_baja) : null;
+
+  const effectiveStartCandidates = [monthStart];
+  if (cohortStart) effectiveStartCandidates.push(cohortStart);
+  if (residentStart) effectiveStartCandidates.push(residentStart);
+
+  const effectiveEndCandidates = [monthEnd];
+  if (cohortEnd) effectiveEndCandidates.push(cohortEnd);
+  if (residentEnd) effectiveEndCandidates.push(residentEnd);
+
+  const effectiveStart = new Date(Math.max(...effectiveStartCandidates.map((date) => date.getTime())));
+  const effectiveEnd = new Date(Math.min(...effectiveEndCandidates.map((date) => date.getTime())));
+
+  if (effectiveStart > effectiveEnd) return 0;
+
+  const activeDays = Math.floor((effectiveEnd.getTime() - effectiveStart.getTime()) / 86400000) + 1;
+  return Number(((baseObjective * activeDays) / monthDays).toFixed(1));
+};
+
 export default function DescansosPage() {
   const [data, setData] = useState<DescansoDraft[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,8 +101,8 @@ export default function DescansosPage() {
     const nextMes = filtroMes === 12 ? 1 : filtroMes + 1;
     const nextYear = filtroMes === 12 ? year + 1 : year;
 
-    const [agentesRes, descRes, planisDescRes, descNextRes, convDescRes, saldosRes] = await Promise.all([
-      supabase.from('datos_personales').select('id_agente, nombre, apellido, dni, cohorte').eq('activo', true).order('apellido'),
+    const [agentesRes, descRes, planisDescRes, descNextRes, convDescRes, saldosRes, cohortConfigRes] = await Promise.all([
+      supabase.from('datos_personales').select('id_agente, nombre, apellido, dni, cohorte, fecha_alta, fecha_baja').eq('activo', true).order('apellido'),
       supabase.from('descansos').select('*').gte('fecha_solicitud', startDate).lte('fecha_solicitud', endDate).order('fecha_solicitud', { ascending: false }),
       supabase
         .from('vista_planificacion_anio')
@@ -77,9 +123,14 @@ export default function DescansosPage() {
         .ilike('tipo_turno', '%descanso%'),
       supabase
         .from('vista_dashboard_saldos')
-        .select('id_agente, diferencia_saldo_48')
+        .select('id_agente, mes, total_horas_convocadas, objetivo_mensual_48')
         .eq('anio', nextYear)
-        .eq('mes', nextMes),
+        .lte('mes', nextMes),
+      supabase
+        .from('config_cohorte')
+        .select('anio, fecha_inicio, fecha_fin')
+        .eq('anio', nextYear)
+        .maybeSingle(),
     ]);
 
     if (agentesRes.data) {
@@ -179,9 +230,40 @@ export default function DescansosPage() {
       setPendingRemoves([]);
 
       if (saldosRes.data) {
+        const cohortConfig: CohortConfig | null = (() => {
+          const row = (cohortConfigRes?.data as { fecha_inicio: string; fecha_fin: string | null } | null) ?? null;
+          if (!row) return null;
+          return { fecha_inicio: row.fecha_inicio, fecha_fin: row.fecha_fin };
+        })();
+
+        const saldosByAgentMonth = new Map<string, { horas: number; objetivo: number }>();
+        for (const s of (saldosRes.data as Array<{ id_agente: number; mes: number; total_horas_convocadas: number | null; objetivo_mensual_48: number | null }>)) {
+          saldosByAgentMonth.set(`${s.id_agente}-${s.mes}`, {
+            horas: Number(s.total_horas_convocadas ?? 0),
+            objetivo: Number(s.objetivo_mensual_48 ?? 48),
+          });
+        }
+
+        const agentMeta: Record<number, CohortAgentMeta> = {};
+        for (const ag of (agentesRes.data as Array<{ id_agente: number; fecha_alta: string | null; fecha_baja: string | null }>)) {
+          agentMeta[ag.id_agente] = { id_agente: ag.id_agente, fecha_alta: ag.fecha_alta, fecha_baja: ag.fecha_baja };
+        }
+
         const map: Record<number, number> = {};
-        for (const s of (saldosRes.data as Array<{ id_agente: number; diferencia_saldo_48: number | null }>)) {
-          map[s.id_agente] = Number((s.diferencia_saldo_48 ?? 0).toFixed(1));
+        for (const agId of Object.keys(agentMeta)) {
+          const id = Number(agId);
+          const meta = agentMeta[id];
+          let totalHoras = 0;
+          let totalObjetivo = 0;
+          for (let m = 1; m <= nextMes; m += 1) {
+            const row = saldosByAgentMonth.get(`${id}-${m}`);
+            const horas = row?.horas ?? 0;
+            const objetivoBase = row?.objetivo ?? 48;
+            const objetivoProrrateado = getProratedObjective(nextYear, m, objetivoBase, cohortConfig, meta);
+            totalHoras += horas;
+            totalObjetivo += objetivoProrrateado;
+          }
+          map[id] = Number((totalHoras - totalObjetivo).toFixed(1));
         }
         setSaldosMap(map);
       } else {
