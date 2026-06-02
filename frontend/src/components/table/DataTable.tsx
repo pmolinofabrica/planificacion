@@ -39,11 +39,14 @@ interface DataTableProps<T extends object> {
   }>;
   /** Delete behavior for the built-in delete button */
   deleteMode?: 'batch' | 'immediate';
+  /** Optional function to add extra class names to a row based on its data */
+  getRowClassName?: (row: TrackedRow<T>) => string | undefined;
 }
 
 export default function DataTable<T extends object>(props: DataTableProps<T>) {
   const { tableName, pkField, initialData, columns, onRefresh, buildNewRow, enableClone,
-          bulkRows, onBulkRowsConsumed, extraToolbar, customMassActions, deleteMode = 'batch' } = props;
+          bulkRows, onBulkRowsConsumed, extraToolbar, customMassActions, deleteMode = 'batch',
+          getRowClassName } = props;
   const [rows, setRows] = useState<TrackedRow<T>[]>(() =>
     initialData.map((d) => ({
       _id: d[pkField] !== null && d[pkField] !== undefined ? String(d[pkField]) : uuidv4(),
@@ -457,18 +460,21 @@ export default function DataTable<T extends object>(props: DataTableProps<T>) {
             {table.getRowModel().rows.map((row) => {
               const status = row.original._status;
               return (
-                <tr
-                  key={row.id}
-                  className={
-                    status === 'new'
-                      ? 'bg-emerald-500/10'
-                      : status === 'modified'
-                      ? 'bg-yellow-500/10'
-                      : status === 'deleted'
-                      ? 'bg-error/10 opacity-50'
-                      : 'row-hover transition-colors'
-                  }
-                >
+                  <tr
+                    key={row.id}
+                    className={
+                      [
+                        status === 'new'
+                          ? 'bg-emerald-500/10'
+                          : status === 'modified'
+                          ? 'bg-yellow-500/10'
+                          : status === 'deleted'
+                          ? 'bg-error/10 opacity-50'
+                          : 'row-hover transition-colors',
+                        getRowClassName?.(row.original) ?? '',
+                      ].filter(Boolean).join(' ')
+                    }
+                  >
                   {row.getVisibleCells().map((cell) => (
                     <td key={cell.id} className="px-4 py-2 border-none">
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}

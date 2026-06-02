@@ -4,6 +4,7 @@ import DataTable, { editableColumn } from '../../components/table/DataTable';
 import type { TrackedRow, BatchError } from '../../types/table';
 import type { ColumnDef } from '@tanstack/react-table';
 import type { InasistenciaView } from '../../types/database';
+import InasistenciasPanel from '../../components/modules/InasistenciasPanel';
 
 type InasistenciaDraft = Omit<InasistenciaView, 'id_inasistencia'> & { id_inasistencia?: number };
 
@@ -108,6 +109,10 @@ export default function InasistenciasPage() {
       </div>
 
       {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">{error}</div>}
+
+      <div className="mb-6">
+        <InasistenciasPanel />
+      </div>
 
       {loading && data.length === 0 ? (
         <div className="flex items-center justify-center h-48 text-gray-500">Cargando registros...</div>

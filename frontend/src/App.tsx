@@ -10,12 +10,15 @@ import PlanificacionPage from './pages/modules/PlanificacionPage';
 import InasistenciasPage from './pages/modules/InasistenciasPage';
 import DescansosPage from './pages/modules/DescansosPage';
 import CertificadosPage from './pages/modules/CertificadosPage';
+import TardanzasPage from './pages/modules/TardanzasPage';
 import CapacitacionesPage from './pages/modules/CapacitacionesPage';
 import DispositivosPage from './pages/modules/DispositivosPage';
 import CapacitacionesDispositivoPage from './pages/modules/CapacitacionesDispositivoPage';
 import SaldosPage from './pages/modules/SaldosPage';
 import ModuleDrawer from './components/layout/ModuleDrawer';
 import CertificadosPanel from './components/modules/CertificadosPanel';
+import TardanzasPanel from './components/modules/TardanzasPanel';
+import InasistenciasPanel from './components/modules/InasistenciasPanel';
 import { supabase } from './lib/supabase';
 
 // Menu grouped according to requirements
@@ -27,10 +30,11 @@ const NAV_GROUPS = [
     { path: '/descansos', label: 'Descansos' },
     { path: '/saldos', label: 'Saldos' },
   ],
-  // Group 2: Inasistencias, Certificados
+  // Group 2: Inasistencias, Certificados, Tardanzas
   [
     { path: '/inasistencias', label: 'Inasistencias' },
     { path: '/certificados', label: 'Certificados' },
+    { path: '/tardanzas', label: 'Tardanzas' },
   ],
   // Group 3: Capacitaciones, Caps Disp
   [
@@ -48,6 +52,8 @@ const NAV_GROUPS = [
 // Modules available in the side panel. Add new entries here to surface more panels.
 const MODULES = [
   { id: 'certificados', label: 'Certificados', icon: 'verified' },
+  { id: 'tardanzas', label: 'Tardanzas', icon: 'schedule' },
+  { id: 'inasistencias', label: 'Inasistencias', icon: 'personal_injury' },
 ] as const;
 
 type ModuleId = typeof MODULES[number]['id'];
@@ -195,6 +201,20 @@ function Layout({ children }: { children: React.ReactNode }) {
       >
         <CertificadosPanel />
       </ModuleDrawer>
+      <ModuleDrawer
+        isOpen={openModule === 'tardanzas'}
+        onClose={closeModulePanel}
+        title="Panel de Tardanzas"
+      >
+        <TardanzasPanel />
+      </ModuleDrawer>
+      <ModuleDrawer
+        isOpen={openModule === 'inasistencias'}
+        onClose={closeModulePanel}
+        title="Panel de Inasistencias"
+      >
+        <InasistenciasPanel />
+      </ModuleDrawer>
     </div>
   );
 }
@@ -259,6 +279,14 @@ function App() {
             element={
               <Layout>
                 <CertificadosPage />
+              </Layout>
+            }
+          />
+          <Route
+            path="/tardanzas"
+            element={
+              <Layout>
+                <TardanzasPage />
               </Layout>
             }
           />
