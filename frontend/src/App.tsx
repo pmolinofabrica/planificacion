@@ -10,6 +10,7 @@ import PlanificacionPage from './pages/modules/PlanificacionPage';
 import InasistenciasPage from './pages/modules/InasistenciasPage';
 import DescansosPage from './pages/modules/DescansosPage';
 import CertificadosPage from './pages/modules/CertificadosPage';
+import CertServPage from './pages/modules/CertServPage';
 import TardanzasPage from './pages/modules/TardanzasPage';
 import CapacitacionesPage from './pages/modules/CapacitacionesPage';
 import DispositivosPage from './pages/modules/DispositivosPage';
@@ -30,11 +31,12 @@ const NAV_GROUPS = [
     { path: '/descansos', label: 'Descansos' },
     { path: '/saldos', label: 'Saldos' },
   ],
-  // Group 2: Inasistencias, Certificados, Tardanzas
+  // Group 2: Inasistencias, Certificados, Tardanzas, Cert. Serv.
   [
     { path: '/inasistencias', label: 'Inasistencias' },
     { path: '/certificados', label: 'Certificados' },
     { path: '/tardanzas', label: 'Tardanzas' },
+    { path: '/cert_serv', label: 'Cert. Serv.' },
   ],
   // Group 3: Capacitaciones, Caps Disp
   [
@@ -279,6 +281,14 @@ function App() {
             element={
               <Layout>
                 <CertificadosPage />
+              </Layout>
+            }
+          />
+          <Route
+            path="/cert_serv"
+            element={
+              <Layout>
+                <CertServPage />
               </Layout>
             }
           />

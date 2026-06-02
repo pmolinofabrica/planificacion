@@ -249,4 +249,18 @@ export interface SaldoDashboardView {
   horas_otros: number;
 }
 
+export interface CertificadoServicioView {
+  id_cert_serv: number;
+  id_agente: number;
+  agente: string;
+  dni: string;
+  id_inasistencia: number;
+  fecha_inasistencia: string;
+  motivo_inasistencia: string;
+  horas_descontar: number | null;
+  cuerpo_texto: string | null;
+  created_at: string | null;
+  horas_convocatoria: number;
+}
+
 
