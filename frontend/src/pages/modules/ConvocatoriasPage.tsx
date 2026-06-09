@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import DataTable, { editableColumn } from '../../components/table/DataTable';
+import type { DataTableHandle } from '../../components/table/DataTable';
 import { EditableCell } from '../../components/table/EditableCell';
 import type { TrackedRow, BatchError } from '../../types/table';
 import type { ColumnDef } from '@tanstack/react-table';
@@ -127,7 +128,11 @@ export default function ConvocatoriasPage() {
   const [popupCell, setPopupCell] = useState<{ dayNum: string; turnoAbbr: string } | null>(null);
   const [popupRows, setPopupRows] = useState<ViewConvocatoria[]>([]);
   const [popupSaldos, setPopupSaldos] = useState<Record<number, number>>({});
+  const [popupInasistencias, setPopupInasistencias] = useState<Record<string, string>>({});
+  const [popupTardanzas, setPopupTardanzas] = useState<Record<string, boolean>>({});
+  const [showFullList, setShowFullList] = useState(false);
   const [cohortConfig, setCohortConfig] = useState<CohortConfig | null>(null);
+  const tableRef = useRef<DataTableHandle<ViewConvocatoria>>(null);
 
   const agentesOptions = useMemo(() =>
     agentes.map(a => ({
@@ -292,6 +297,7 @@ export default function ConvocatoriasPage() {
   const planiDashboard = useMemo(() => {
     const counts = new Map<number, number>();
     for (const conv of data) {
+      if (conv.estado !== 'vigente') continue;
       counts.set(conv.id_plani, (counts.get(conv.id_plani) ?? 0) + 1);
     }
     return planiOptions.map(p => ({
@@ -430,14 +436,43 @@ export default function ConvocatoriasPage() {
     const rows = data.filter(c => planiIds.has(c.id_plani));
     setPopupRows(rows);
     setPopupCell({ dayNum, turnoAbbr });
+    setShowFullList(false);
     const agentIds = [...new Set(rows.map(r => r.id_agente))];
     if (agentIds.length > 0) {
-      const { data: saldos } = await supabase
-        .from('vista_dashboard_saldos')
-        .select('id_agente, mes, total_horas_convocadas, objetivo_mensual_48')
-        .eq('anio', currentYear)
-        .lte('mes', filtroMes)
-        .in('id_agente', agentIds);
+      const dates = [...new Set(rows.map(r => r.fecha_turno))];
+      const [saldosRes, inasisRes, tardRes] = await Promise.all([
+        supabase
+          .from('vista_dashboard_saldos')
+          .select('id_agente, mes, total_horas_convocadas, objetivo_mensual_48')
+          .eq('anio', currentYear)
+          .lte('mes', filtroMes)
+          .in('id_agente', agentIds),
+        supabase
+          .from('inasistencias')
+          .select('id_agente, fecha_inasistencia, motivo')
+          .in('id_agente', agentIds)
+          .in('fecha_inasistencia', dates),
+        supabase
+          .from('tardanzas')
+          .select('id_agente, fecha')
+          .in('id_agente', agentIds)
+          .in('fecha', dates),
+      ]);
+      const inasisMap: Record<string, string> = {};
+      if (inasisRes.data) {
+        for (const r of inasisRes.data as Array<{ id_agente: number; fecha_inasistencia: string; motivo: string }>) {
+          inasisMap[`${r.id_agente}|${r.fecha_inasistencia}`] = r.motivo;
+        }
+      }
+      setPopupInasistencias(inasisMap);
+      const tardMap: Record<string, boolean> = {};
+      if (tardRes.data) {
+        for (const r of tardRes.data as Array<{ id_agente: number; fecha: string }>) {
+          tardMap[`${r.id_agente}|${r.fecha}`] = true;
+        }
+      }
+      setPopupTardanzas(tardMap);
+      const { data: saldos } = saldosRes;
       const map: Record<number, number> = {};
       if (saldos) {
         const saldosByAgentMonth = new Map<string, { horas: number; objetivo: number }>();
@@ -476,7 +511,11 @@ export default function ConvocatoriasPage() {
   const togglePopupEstado = (idConvocatoria: number) => {
     setPopupRows(prev => prev.map(r =>
       r.id_convocatoria === idConvocatoria
-        ? { ...r, estado: r.estado === 'cancelada' ? 'vigente' : 'cancelada' }
+        ? {
+            ...r,
+            estado: r.estado === 'cancelada' ? 'vigente' : 'cancelada',
+            turno_cancelado: r.estado === 'cancelada' ? false : true,
+          }
         : r
     ));
   };
@@ -484,13 +523,15 @@ export default function ConvocatoriasPage() {
   const aplicarPopupCambios = () => {
     const changedRows = popupRows.filter(r => {
       const orig = data.find(d => d.id_convocatoria === r.id_convocatoria);
-      return orig && orig.estado !== r.estado;
+      return orig && (orig.estado !== r.estado || orig.turno_cancelado !== r.turno_cancelado);
     });
     if (changedRows.length > 0) {
-      setData(prev => prev.map(d => {
-        const updated = changedRows.find(c => c.id_convocatoria === d.id_convocatoria);
-        return updated ?? d;
-      }));
+      tableRef.current?.patchRows(
+        changedRows.map(r => ({
+          pkValue: r.id_convocatoria,
+          changes: { estado: r.estado, turno_cancelado: r.turno_cancelado },
+        }))
+      );
     }
     setPopupCell(null);
     setPopupRows([]);
@@ -648,6 +689,7 @@ export default function ConvocatoriasPage() {
       ) : (
         <DataTable<ViewConvocatoria>
           key={refreshKey}
+          ref={tableRef}
           tableName="convocatoria"
           pkField="id_convocatoria"
           initialData={data}
@@ -788,13 +830,22 @@ export default function ConvocatoriasPage() {
         </div>
       )}
       {popupCell && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center pt-10 bg-black/30 backdrop-blur-sm" onClick={() => { setPopupCell(null); setPopupRows([]); }}>
+        <div className="fixed inset-0 z-50 flex items-start justify-center pt-10 bg-black/30 backdrop-blur-sm" onClick={() => { setPopupCell(null); setPopupRows([]); setShowFullList(false); setPopupInasistencias({}); setPopupTardanzas({}); }}>
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl p-6 max-h-[80vh] overflow-y-auto m-4" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-4">
-              <h3 className="font-headline text-lg font-bold text-gray-800">
+              <h3 className="font-headline text-lg font-bold text-gray-800 flex items-center gap-2">
                 {popupCell.turnoAbbr} — Día {popupCell.dayNum}
+                <button
+                  onClick={() => setShowFullList(!showFullList)}
+                  className={`p-1 rounded transition-colors ${showFullList ? 'bg-primary/10 text-primary' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}
+                  title="Ver lista completa de residentes"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
+                </button>
               </h3>
-              <button onClick={() => { setPopupCell(null); setPopupRows([]); }} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+              <button onClick={() => { setPopupCell(null); setPopupRows([]); setShowFullList(false); setPopupInasistencias({}); setPopupTardanzas({}); }} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
             </div>
             <div className="overflow-x-auto">
               <table className="min-w-full text-left text-xs">
@@ -803,6 +854,8 @@ export default function ConvocatoriasPage() {
                     <th className="py-2 px-2 font-semibold text-on-surface-variant">Agente</th>
                     <th className="py-2 px-2 font-semibold text-on-surface-variant text-right w-16">Saldo</th>
                     <th className="py-2 px-2 font-semibold text-on-surface-variant text-center w-24">Estado</th>
+                    <th className="py-2 px-2 font-semibold text-on-surface-variant text-center w-24">Inasistencia</th>
+                    <th className="py-2 px-2 font-semibold text-on-surface-variant text-center w-20">Tardanza</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -828,14 +881,64 @@ export default function ConvocatoriasPage() {
                           {r.estado === 'cancelada' ? 'Cancelada' : 'Vigente'}
                         </button>
                       </td>
+                      <td className="py-1.5 px-2 text-center text-[11px]">
+                        {popupInasistencias[`${r.id_agente}|${r.fecha_turno}`] ? (
+                          <span className="text-amber-700 font-medium">{popupInasistencias[`${r.id_agente}|${r.fecha_turno}`]}</span>
+                        ) : (
+                          <span className="text-gray-300">—</span>
+                        )}
+                      </td>
+                      <td className="py-1.5 px-2 text-center">
+                        {popupTardanzas[`${r.id_agente}|${r.fecha_turno}`] ? (
+                          <span className="text-red-600 font-bold text-sm">✓</span>
+                        ) : (
+                          <span className="text-gray-300">—</span>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
+            {showFullList && (
+              <div className="mt-4 border-t border-outline-variant/20 pt-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Cancelados</span>
+                  <button
+                    onClick={() => {
+                      const header = `${popupCell.dayNum}/${String(filtroMes).padStart(2, '0')} - ${popupRows[0]?.tipo_turno ?? popupCell.turnoAbbr}`;
+                      const names = [...popupRows]
+                        .filter(r => r.estado === 'cancelada')
+                        .sort((a, b) => a.agente.localeCompare(b.agente))
+                        .map(r => r.agente);
+                      navigator.clipboard.writeText([header, ...names].join('\n'));
+                    }}
+                    className="px-3 py-1 rounded-lg text-[11px] font-bold bg-surface-container-high text-on-surface-variant hover:bg-surface-dim transition-colors border border-outline-variant/20"
+                  >
+                    Copiar lista
+                  </button>
+                </div>
+                <div className="max-h-48 overflow-y-auto border border-outline-variant/20 rounded-lg divide-y divide-outline-variant/10">
+                  <div className="py-1.5 px-3 text-sm font-semibold text-on-surface-variant bg-surface-container-low">
+                    {popupCell.dayNum}/{String(filtroMes).padStart(2, '0')} - {popupRows[0]?.tipo_turno ?? popupCell.turnoAbbr}
+                  </div>
+                  {[...popupRows]
+                    .filter(r => r.estado === 'cancelada')
+                    .sort((a, b) => a.agente.localeCompare(b.agente))
+                    .map(r => (
+                      <div key={r.id_convocatoria} className="py-1.5 px-3 text-sm text-red-700">
+                        {r.agente}
+                      </div>
+                    ))}
+                  {popupRows.filter(r => r.estado === 'cancelada').length === 0 && (
+                    <div className="py-4 text-xs text-gray-400 text-center italic">Sin residentes cancelados.</div>
+                  )}
+                </div>
+              </div>
+            )}
             <div className="flex justify-end gap-2 mt-4">
               <button
-                onClick={() => { setPopupCell(null); setPopupRows([]); }}
+                onClick={() => { setPopupCell(null); setPopupRows([]); setShowFullList(false); setPopupInasistencias({}); setPopupTardanzas({}); }}
                 className="px-4 py-2 rounded-lg text-xs font-bold text-gray-500 hover:text-gray-700 transition-colors"
               >
                 Cancelar

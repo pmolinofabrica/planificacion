@@ -7,7 +7,7 @@ import {
   flexRender,
 } from '@tanstack/react-table';
 import type { ColumnDef, SortingState, ColumnFiltersState } from '@tanstack/react-table';
-import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import type { TrackedRow, BatchError, BatchResult } from '../../types/table';
 import { computeDiff } from '../../utils/diff';
@@ -43,7 +43,12 @@ interface DataTableProps<T extends object> {
   getRowClassName?: (row: TrackedRow<T>) => string | undefined;
 }
 
-export default function DataTable<T extends object>(props: DataTableProps<T>) {
+export interface DataTableHandle<T extends object> {
+  /** Apply partial changes to rows identified by their PK value and mark them as modified */
+  patchRows: (patches: Array<{ pkValue: unknown; changes: Partial<T> }>) => void;
+}
+
+const DataTable = forwardRef(function DataTable<T extends object>(props: DataTableProps<T>, ref: React.Ref<DataTableHandle<T>>) {
   const { tableName, pkField, initialData, columns, onRefresh, buildNewRow, enableClone,
           bulkRows, onBulkRowsConsumed, extraToolbar, customMassActions, deleteMode = 'batch',
           getRowClassName } = props;
@@ -115,6 +120,24 @@ export default function DataTable<T extends object>(props: DataTableProps<T>) {
       })
     );
   }, []);
+
+  useImperativeHandle(ref, () => ({
+    patchRows: (patches) => {
+      setRows((prev) =>
+        prev.map((row) => {
+          const patch = patches.find(
+            (p) => String(p.pkValue) === String(row.data[pkField])
+          );
+          if (!patch) return row;
+          return {
+            ...row,
+            data: { ...row.data, ...patch.changes },
+            _status: row._status === 'new' ? 'new' : 'modified',
+          };
+        })
+      );
+    },
+  }), [pkField]);
 
   // Same as updateCell but also syncs _original so the field is NOT picked up by computeDiff.
   // Use for display-only (view-computed) fields that aren't actual DB columns.
@@ -561,7 +584,9 @@ export default function DataTable<T extends object>(props: DataTableProps<T>) {
       )}
     </div>
   );
-}
+});
+
+export default DataTable;
 
 // Helper to create a column definition with EditableCell
 export function editableColumn<T extends object>(
