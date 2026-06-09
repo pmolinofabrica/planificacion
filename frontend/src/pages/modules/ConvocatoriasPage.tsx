@@ -689,7 +689,7 @@ export default function ConvocatoriasPage() {
       ) : (
         <DataTable<ViewConvocatoria>
           key={refreshKey}
-          ref={tableRef}
+          tableRef={tableRef}
           tableName="convocatoria"
           pkField="id_convocatoria"
           initialData={data}

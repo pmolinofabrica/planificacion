@@ -7,7 +7,7 @@ import {
   flexRender,
 } from '@tanstack/react-table';
 import type { ColumnDef, SortingState, ColumnFiltersState } from '@tanstack/react-table';
-import React, { useState, useCallback, useMemo, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
+import React, { useState, useCallback, useMemo, useRef, useEffect, useImperativeHandle } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import type { TrackedRow, BatchError, BatchResult } from '../../types/table';
 import { computeDiff } from '../../utils/diff';
@@ -41,6 +41,8 @@ interface DataTableProps<T extends object> {
   deleteMode?: 'batch' | 'immediate';
   /** Optional function to add extra class names to a row based on its data */
   getRowClassName?: (row: TrackedRow<T>) => string | undefined;
+  /** Ref to access DataTable methods (e.g. patchRows) */
+  tableRef?: React.RefObject<DataTableHandle<T> | null>;
 }
 
 export interface DataTableHandle<T extends object> {
@@ -48,10 +50,10 @@ export interface DataTableHandle<T extends object> {
   patchRows: (patches: Array<{ pkValue: unknown; changes: Partial<T> }>) => void;
 }
 
-const DataTable = forwardRef(function DataTable<T extends object>(props: DataTableProps<T>, ref: React.Ref<DataTableHandle<T>>) {
+export default function DataTable<T extends object>(props: DataTableProps<T>) {
   const { tableName, pkField, initialData, columns, onRefresh, buildNewRow, enableClone,
           bulkRows, onBulkRowsConsumed, extraToolbar, customMassActions, deleteMode = 'batch',
-          getRowClassName } = props;
+          getRowClassName, tableRef } = props;
   const [rows, setRows] = useState<TrackedRow<T>[]>(() =>
     initialData.map((d) => ({
       _id: d[pkField] !== null && d[pkField] !== undefined ? String(d[pkField]) : uuidv4(),
@@ -121,7 +123,7 @@ const DataTable = forwardRef(function DataTable<T extends object>(props: DataTab
     );
   }, []);
 
-  useImperativeHandle(ref, () => ({
+  useImperativeHandle(tableRef, () => ({
     patchRows: (patches) => {
       setRows((prev) =>
         prev.map((row) => {
@@ -584,9 +586,7 @@ const DataTable = forwardRef(function DataTable<T extends object>(props: DataTab
       )}
     </div>
   );
-});
-
-export default DataTable;
+}
 
 // Helper to create a column definition with EditableCell
 export function editableColumn<T extends object>(
