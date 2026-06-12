@@ -137,11 +137,11 @@ export default function TardanzasPanel() {
       .select('id_turno, tipo_turno')
       .eq('activo', true)
       .order('tipo_turno')
-      .then(({ data, error: err }) => {
-        if (!err && data) {
-          setTurnoOptions(data as TurnoOption[]);
-          if (data.length > 0) {
-            setSelectedTurnoId(data[0].id_turno);
+      .then((result: { data: TurnoOption[] | null; error: unknown }) => {
+        if (!result.error && result.data) {
+          setTurnoOptions(result.data);
+          if (result.data.length > 0) {
+            setSelectedTurnoId(result.data[0].id_turno);
           }
         }
       });
