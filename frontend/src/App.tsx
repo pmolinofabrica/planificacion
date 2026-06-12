@@ -22,6 +22,8 @@ import TardanzasPanel from './components/modules/TardanzasPanel';
 import InasistenciasPanel from './components/modules/InasistenciasPanel';
 import { supabase } from './lib/supabase';
 
+type SimpleTab = 'certificados' | 'tardanzas' | 'inasistencias';
+
 // Menu grouped according to requirements
 const NAV_GROUPS = [
   // Group 1: Planificación, Convocatoria, Descansos, Saldos
@@ -60,10 +62,20 @@ const MODULES = [
 
 type ModuleId = typeof MODULES[number]['id'];
 
+function SimpleModeView({ activeTab }: { activeTab: SimpleTab }) {
+  switch (activeTab) {
+    case 'certificados': return <CertificadosPanel />;
+    case 'tardanzas': return <TardanzasPanel />;
+    case 'inasistencias': return <InasistenciasPanel />;
+  }
+}
+
 function Layout({ children }: { children: React.ReactNode }) {
   const { session } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [openModule, setOpenModule] = useState<ModuleId | null>(null);
+  const [simpleMode, setSimpleMode] = useState(false);
+  const [activeSimpleTab, setActiveSimpleTab] = useState<SimpleTab>('certificados');
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -77,6 +89,12 @@ function Layout({ children }: { children: React.ReactNode }) {
     setIsSidebarOpen(false);
   };
   const closeModulePanel = () => setOpenModule(null);
+
+  const SIMPLE_TABS: { id: SimpleTab; label: string; icon: string }[] = [
+    { id: 'certificados', label: 'Certificados', icon: 'verified' },
+    { id: 'tardanzas', label: 'Tardanzas', icon: 'schedule' },
+    { id: 'inasistencias', label: 'Inasistencias', icon: 'personal_injury' },
+  ];
 
   return (
     <div className="min-h-screen bg-surface font-body text-on-surface">
@@ -123,62 +141,100 @@ function Layout({ children }: { children: React.ReactNode }) {
           </button>
         </div>
 
-        <div className="px-4 mb-4">
-          <p className="font-headline uppercase tracking-widest text-[9px] font-bold text-slate-500 mb-2 px-2">Paneles</p>
-          <div className="flex flex-col gap-1">
-            {MODULES.map((m) => {
-              const active = openModule === m.id;
-              return (
-                <button
-                  key={m.id}
-                  onClick={() => openModulePanel(m.id)}
-                  className={`flex items-center gap-3 px-4 py-3 mx-2 rounded-lg transition-all duration-200 active:translate-x-1 ${
-                    active
-                      ? 'text-white bg-gradient-to-r from-primary to-primary-container shadow-md'
-                      : 'text-slate-400 hover:text-white hover:bg-white/5'
-                  }`}
-                >
-                  <span className="material-symbols-outlined text-base">{m.icon}</span>
-                  <span className="font-headline uppercase tracking-widest text-[10px] font-bold">{m.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <nav className="flex-1 overflow-y-auto no-scrollbar">
-          <div className="space-y-4">
-            {NAV_GROUPS.map((group, groupIdx) => (
-              <div
-                key={groupIdx}
-                className={`flex flex-col gap-1 pb-4 ${
-                  groupIdx !== NAV_GROUPS.length - 1 ? 'border-b border-white/10' : ''
-                }`}
-              >
-                {group.map((item) => (
-                  <NavLink
-                    key={item.path}
-                    to={item.path}
-                    onClick={closeSidebar}
-                    className={({ isActive }) =>
-                      `flex items-center gap-3 px-4 py-3 mx-2 rounded-lg transition-all duration-200 active:translate-x-1 ${
-                        isActive
+        {!simpleMode && (
+          <>
+            <div className="px-4 mb-4">
+              <p className="font-headline uppercase tracking-widest text-[9px] font-bold text-slate-500 mb-2 px-2">Paneles</p>
+              <div className="flex flex-col gap-1">
+                {MODULES.map((m) => {
+                  const active = openModule === m.id;
+                  return (
+                    <button
+                      key={m.id}
+                      onClick={() => openModulePanel(m.id)}
+                      className={`flex items-center gap-3 px-4 py-3 mx-2 rounded-lg transition-all duration-200 active:translate-x-1 ${
+                        active
                           ? 'text-white bg-gradient-to-r from-primary to-primary-container shadow-md'
                           : 'text-slate-400 hover:text-white hover:bg-white/5'
-                      }`
-                    }
+                      }`}
+                    >
+                      <span className="material-symbols-outlined text-base">{m.icon}</span>
+                      <span className="font-headline uppercase tracking-widest text-[10px] font-bold">{m.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <nav className="flex-1 overflow-y-auto no-scrollbar">
+              <div className="space-y-4">
+                {NAV_GROUPS.map((group, groupIdx) => (
+                  <div
+                    key={groupIdx}
+                    className={`flex flex-col gap-1 pb-4 ${
+                      groupIdx !== NAV_GROUPS.length - 1 ? 'border-b border-white/10' : ''
+                    }`}
                   >
-                    <span className="font-headline uppercase tracking-widest text-[10px] font-bold">{item.label}</span>
-                  </NavLink>
+                    {group.map((item) => (
+                      <NavLink
+                        key={item.path}
+                        to={item.path}
+                        onClick={closeSidebar}
+                        className={({ isActive }) =>
+                          `flex items-center gap-3 px-4 py-3 mx-2 rounded-lg transition-all duration-200 active:translate-x-1 ${
+                            isActive
+                              ? 'text-white bg-gradient-to-r from-primary to-primary-container shadow-md'
+                              : 'text-slate-400 hover:text-white hover:bg-white/5'
+                          }`
+                        }
+                      >
+                        <span className="font-headline uppercase tracking-widest text-[10px] font-bold">{item.label}</span>
+                      </NavLink>
+                    ))}
+                  </div>
                 ))}
               </div>
-            ))}
-          </div>
-        </nav>
+            </nav>
+          </>
+        )}
+
+        {simpleMode && (
+          <nav className="flex-1 overflow-y-auto no-scrollbar px-4">
+            <p className="font-headline uppercase tracking-widest text-[9px] font-bold text-slate-500 mb-2 px-2">Paneles Rápidos</p>
+            <div className="flex flex-col gap-1">
+              {SIMPLE_TABS.map((t) => {
+                const active = activeSimpleTab === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    onClick={() => { setActiveSimpleTab(t.id); setIsSidebarOpen(false); }}
+                    className={`flex items-center gap-3 px-4 py-3 mx-2 rounded-lg transition-all duration-200 active:translate-x-1 ${
+                      active
+                        ? 'text-white bg-gradient-to-r from-primary to-primary-container shadow-md'
+                        : 'text-slate-400 hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-base">{t.icon}</span>
+                    <span className="font-headline uppercase tracking-widest text-[10px] font-bold">{t.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </nav>
+        )}
 
         <div className="px-4 mt-auto">
-          <div className="border-t border-white/10 pt-4">
-            <p className="text-xs text-slate-500 mb-4 truncate text-center font-semibold tracking-wider font-headline">{session?.user?.email}</p>
+          <div className="border-t border-white/10 pt-4 flex flex-col gap-2">
+            <button
+              onClick={() => { setSimpleMode(!simpleMode); setOpenModule(null); setActiveSimpleTab('certificados'); }}
+              className={`w-full py-3 rounded-lg font-bold text-xs uppercase tracking-widest transition-all border ${
+                simpleMode
+                  ? 'bg-primary/20 text-white border-primary/40 hover:bg-primary/30'
+                  : 'bg-white/5 text-slate-300 border-white/5 hover:bg-white/10'
+              }`}
+            >
+              {simpleMode ? '✕ Salir Modo Simple' : '◉ Modo Simple'}
+            </button>
             <button
               onClick={handleLogout}
               className="w-full bg-white/5 text-slate-300 py-3 rounded-lg font-bold text-xs uppercase tracking-widest hover:bg-error/20 hover:text-error transition-all border border-white/5"
@@ -190,9 +246,36 @@ function Layout({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Main content (scrolling area) */}
-      <main className="md:ml-64 pt-16 md:pt-0 h-screen overflow-y-auto flex flex-col transition-all duration-300">
-        <div className="p-4 md:p-8 flex-1 flex flex-col max-w-7xl mx-auto w-full">
-          {children}
+      <main className={`md:ml-64 ${simpleMode ? 'pt-0' : 'pt-16 md:pt-0'} h-screen overflow-y-auto flex flex-col transition-all duration-300`}>
+        <div className="p-4 md:p-8 flex-1 flex flex-col mx-auto w-full max-w-7xl">
+          {simpleMode ? (
+            <>
+              <div className="flex gap-1 mb-4 border-b border-outline-variant/20 overflow-x-auto no-scrollbar">
+                {SIMPLE_TABS.map((t) => {
+                  const active = activeSimpleTab === t.id;
+                  return (
+                    <button
+                      key={t.id}
+                      onClick={() => setActiveSimpleTab(t.id)}
+                      className={`px-4 py-2.5 text-xs font-bold font-headline uppercase tracking-wider whitespace-nowrap transition-all border-b-2 -mb-px ${
+                        active
+                          ? 'text-primary border-primary'
+                          : 'text-on-surface-variant border-transparent hover:text-on-surface hover:border-outline-variant'
+                      }`}
+                    >
+                      <span className="material-symbols-outlined text-base mr-1.5 align-middle">{t.icon}</span>
+                      {t.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="flex-1">
+                <SimpleModeView activeTab={activeSimpleTab} />
+              </div>
+            </>
+          ) : (
+            children
+          )}
         </div>
       </main>
 
