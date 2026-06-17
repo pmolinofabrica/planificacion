@@ -1,10 +1,10 @@
 ﻿import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
 import DataTable, { editableColumn } from '../../components/table/DataTable';
-import type { TrackedRow } from '../../types/table';
+import type { TrackedRow, BatchError } from '../../types/table';
 import type { ColumnDef } from '@tanstack/react-table';
 import type { Descanso } from '../../types/database';
-import { batchUpdate } from '../../utils/batch';
+import { batchUpdate as batchUpdateUtil } from '../../utils/batch';
 
 type DescansoDraft = Omit<Descanso, 'id_desc'> & { id_desc?: number };
 type ConvocatoriaPlani = {
@@ -78,7 +78,6 @@ export default function DescansosPage() {
   const [data, setData] = useState<DescansoDraft[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [refreshVersion, setRefreshVersion] = useState(0);
   const [filtroMes, setFiltroMes] = useState(new Date().getMonth() + 1);
   const [agentesOptions, setAgentesOptions] = useState<{value: number, label: string}[]>([]);
   const [asignando, setAsignando] = useState(false);
@@ -120,6 +119,7 @@ export default function DescansosPage() {
         .select('fecha_turno, id_agente')
         .eq('mes', nextMes)
         .eq('anio', nextYear)
+        .eq('estado', 'vigente')
         .ilike('tipo_turno', '%descanso%'),
       supabase
         .from('vista_dashboard_saldos')
@@ -271,7 +271,6 @@ export default function DescansosPage() {
       }
     }
 
-    setRefreshVersion((v) => v + 1);
     setLoading(false);
   }, [filtroMes]);
 
@@ -282,31 +281,57 @@ export default function DescansosPage() {
     setAsignando(true);
     setError('');
 
-    const skipped = selected.filter(
-      (d) => typeof d.id_desc !== 'number' || typeof d.id_agente !== 'number' || d.id_agente <= 0
-    );
-    const toUpdate = selected
-      .filter(
-        (d): d is DescansoDraft & { id_desc: number } =>
-          typeof d.id_desc === 'number' && typeof d.id_agente === 'number' && d.id_agente > 0 && d.estado !== 'asignado'
-      )
-      .map((d) => ({ id: d.id_desc, changes: { estado: 'asignado' as const } }));
+    const warnings: string[] = [];
+    const toAssign: (DescansoDraft & { id_desc: number })[] = [];
 
-    if (toUpdate.length === 0) {
-      setAsignando(false);
-      if (skipped.length > 0) {
-        setError('No se pudieron asignar filas sin ID de descanso.');
+    for (const d of selected) {
+      if (typeof d.id_desc !== 'number' || typeof d.id_agente !== 'number' || d.id_agente <= 0) {
+        warnings.push(`ID ${d.id_desc ?? '?'}: faltan datos para asignar.`);
+        continue;
       }
+      if (d.estado === 'asignado') continue;
+
+      const diaSolicitado = normalizeDate(d.dia_solicitado);
+      if (!diaSolicitado) {
+        warnings.push(`ID ${d.id_desc}: falta día solicitado.`);
+        continue;
+      }
+
+      const { data: planificacion, error: planError } = await supabase
+        .from('vista_planificacion_anio')
+        .select('id_plani, id_turno')
+        .eq('fecha', diaSolicitado)
+        .in('tipo_turno', ['descanso', 'Descanso'])
+        .order('id_plani', { ascending: true });
+
+      if (planError) {
+        warnings.push(`ID ${d.id_desc}: error al buscar planificación (${planError.message}).`);
+        continue;
+      }
+
+      if (!planificacion || planificacion.length === 0) {
+        warnings.push(`ID ${d.id_desc}: no existe planificación de descanso para ${diaSolicitado}.`);
+        continue;
+      }
+
+      toAssign.push(d as DescansoDraft & { id_desc: number });
+    }
+
+    if (toAssign.length === 0) {
+      setAsignando(false);
+      setError(warnings.join(' | '));
       return;
     }
 
     try {
-      const result = await batchUpdate<DescansoDraft>('descansos', 'id_desc', toUpdate);
+      const result = await batchUpdateUtil<DescansoDraft>('descansos', 'id_desc',
+        toAssign.map((d) => ({ id: d.id_desc, changes: { estado: 'asignado' as const } }))
+      );
       if (result.failures.length > 0) {
         throw new Error(result.failures[0]?.error || 'Algunas filas no pudieron actualizarse');
       }
 
-      const updatedIds = new Set(toUpdate.map((u) => String(u.id)));
+      const updatedIds = new Set(toAssign.map((u) => String(u.id_desc)));
       setData((prev) =>
         prev.map((row) =>
           row.id_desc !== undefined && updatedIds.has(String(row.id_desc))
@@ -315,76 +340,58 @@ export default function DescansosPage() {
         )
       );
 
-      const descansosAsignados = selected.filter(
-        (d): d is DescansoDraft & { id_desc: number } =>
-          typeof d.id_desc === 'number' && typeof d.id_agente === 'number' && d.id_agente > 0 && d.estado !== 'asignado'
-      );
-
-      const convocatoriaWarnings: string[] = [];
-
-      for (const descanso of descansosAsignados) {
+      for (const descanso of toAssign) {
         const diaSolicitado = normalizeDate(descanso.dia_solicitado);
+        if (!diaSolicitado) continue;
 
-        if (!descanso.id_agente || !diaSolicitado) {
-          convocatoriaWarnings.push(`ID ${descanso.id_desc}: faltan datos para crear convocatoria.`);
-          continue;
-        }
-
-        const { data: planificacion, error: planError } = await supabase
+        const { data: planificacion } = await supabase
           .from('vista_planificacion_anio')
-          .select('id_plani, id_turno, fecha, tipo_turno')
+          .select('id_plani, id_turno')
           .eq('fecha', diaSolicitado)
           .in('tipo_turno', ['descanso', 'Descanso'])
           .order('id_plani', { ascending: true });
 
-        if (planError) {
-          convocatoriaWarnings.push(`ID ${descanso.id_desc}: error buscando planificación (${planError.message}).`);
-          continue;
-        }
-
         const planMatch = (planificacion ?? [])[0] as ConvocatoriaPlani | undefined;
-        if (!planMatch) {
-          convocatoriaWarnings.push(`ID ${descanso.id_desc}: no existe planificación de descanso para ${diaSolicitado}.`);
-          continue;
-        }
+        if (!planMatch) continue;
 
-        const { data: existingConvocatoria, error: existingError } = await supabase
+        const { data: existing } = await supabase
           .from('convocatoria')
-          .select('id_convocatoria')
+          .select('id_convocatoria, estado')
           .eq('id_plani', planMatch.id_plani)
           .eq('id_agente', descanso.id_agente)
           .maybeSingle();
 
-        if (existingError) {
-          convocatoriaWarnings.push(`ID ${descanso.id_desc}: no se pudo verificar si ya existía convocatoria (${existingError.message}).`);
-          continue;
-        }
+        if (existing?.estado === 'vigente') continue;
 
-        if (existingConvocatoria) {
-          continue;
-        }
-
-        const { error: insertError } = await supabase.from('convocatoria').insert({
-          id_plani: planMatch.id_plani,
-          id_agente: descanso.id_agente,
-          id_turno: planMatch.id_turno,
-          fecha_convocatoria: diaSolicitado,
-          estado: 'vigente',
-        });
-
-        if (insertError) {
-          convocatoriaWarnings.push(`ID ${descanso.id_desc}: no se pudo crear la convocatoria (${insertError.message}).`);
+        if (existing?.estado === 'cancelada') {
+          const { error: reactErr } = await supabase
+            .from('convocatoria')
+            .update({ estado: 'vigente' })
+            .eq('id_convocatoria', existing.id_convocatoria);
+          if (reactErr) {
+            warnings.push(`ID ${descanso.id_desc}: no se pudo reactivar la convocatoria (${reactErr.message}).`);
+          }
+        } else {
+          const { error: insertError } = await supabase.from('convocatoria').insert({
+            id_plani: planMatch.id_plani,
+            id_agente: descanso.id_agente,
+            id_turno: planMatch.id_turno,
+            fecha_convocatoria: diaSolicitado,
+            estado: 'vigente',
+          });
+          if (insertError) {
+            warnings.push(`ID ${descanso.id_desc}: no se pudo crear la convocatoria (${insertError.message}).`);
+          }
         }
       }
 
       await fetchData();
 
-      if (convocatoriaWarnings.length > 0) {
-        setError(`Asignación completada con observaciones: ${convocatoriaWarnings.join(' ')}`);
+      if (warnings.length > 0) {
+        setError(`Asignación completada con observaciones: ${warnings.join(' ')}`);
       }
     } catch (e: any) {
-      const suffix = skipped.length > 0 ? ' Algunas filas no tenían ID de descanso.' : '';
-      setError('Error al asignar masivamente: ' + e.message + suffix);
+      setError('Error al asignar: ' + e.message);
     } finally {
       setAsignando(false);
     }
@@ -395,7 +402,7 @@ export default function DescansosPage() {
     const cell = gridCells[agentId]?.[dateStr];
     if (!cell) return;
 
-    if (cell.hasDescanso || pendingAdds.includes(key)) {
+    if (cell.inConvocatoria || pendingAdds.includes(key)) {
       setPendingRemoves(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]);
       setPendingAdds(prev => prev.filter(k => k !== key));
     } else {
@@ -415,7 +422,35 @@ export default function DescansosPage() {
       const agentId = Number(parts[0]);
       const dateStr = parts[1];
       const cell = gridCells[agentId]?.[dateStr];
-      if (cell?.idDesc) {
+      if (!cell?.idDesc) continue;
+
+      if (cell.inConvocatoria) {
+        const { error: updErr } = await supabase
+          .from('descansos')
+          .update({ estado: 'pendiente' })
+          .eq('id_desc', cell.idDesc);
+        if (updErr) {
+          errors.push(`Error al revertir descanso: ${updErr.message}`);
+          continue;
+        }
+        const { data: plani } = await supabase
+          .from('vista_planificacion_anio')
+          .select('id_plani')
+          .eq('fecha', dateStr)
+          .in('tipo_turno', ['descanso', 'Descanso'])
+          .order('id_plani', { ascending: true })
+          .limit(1);
+        const idPlani = (plani ?? [])[0]?.id_plani;
+        if (idPlani) {
+          const { error: convErr } = await supabase
+            .from('convocatoria')
+            .update({ estado: 'cancelada' })
+            .eq('id_plani', idPlani)
+            .eq('id_agente', agentId)
+            .eq('estado', 'vigente');
+          if (convErr) errors.push(`Error al cancelar convocatoria: ${convErr.message}`);
+        }
+      } else {
         const { error: delErr } = await supabase.from('descansos').delete().eq('id_desc', cell.idDesc);
         if (delErr) errors.push(`Error al eliminar descanso: ${delErr.message}`);
       }
@@ -433,7 +468,7 @@ export default function DescansosPage() {
           observaciones: 'carga manual',
         };
       });
-      const { error: insErr } = await supabase.from('descansos').insert(inserts);
+      const { error: insErr } = await supabase.from('descansos').upsert(inserts, { onConflict: 'id_agente,dia_solicitado' });
       if (insErr) errors.push(`Error al insertar descansos: ${insErr.message}`);
     }
 
@@ -461,6 +496,71 @@ export default function DescansosPage() {
     ]),
     editableColumn<DescansoDraft>('observaciones', 'Observaciones'),
   ], [agentesOptions]);
+
+  const handleDescansoBatchUpdate = useCallback(async (
+    updates: { id: unknown; changes: Partial<DescansoDraft> }[],
+    rows: Map<string, TrackedRow<DescansoDraft>>
+  ): Promise<{ successes: { id: unknown }[]; failures: BatchError[] }> => {
+    const successes: { id: unknown }[] = [];
+    const failures: BatchError[] = [];
+
+    for (const upd of updates) {
+      const { id, changes } = upd;
+      const { error: updErr } = await supabase
+        .from('descansos')
+        .update(changes)
+        .eq('id_desc', id);
+      if (updErr) {
+        failures.push({ index: 0, row: upd, error: updErr.message });
+        continue;
+      }
+      successes.push({ id });
+
+      if (changes.estado === 'asignado') {
+        const row = [...rows.values()].find(r => String(r.data.id_desc) === String(id));
+        const diaSolicitado = row?.data.dia_solicitado ? normalizeDate(row.data.dia_solicitado) : '';
+        const idAgente = row?.data.id_agente;
+        if (!diaSolicitado || !idAgente) continue;
+
+        const { data: plani } = await supabase
+          .from('vista_planificacion_anio')
+          .select('id_plani, id_turno')
+          .eq('fecha', diaSolicitado)
+          .in('tipo_turno', ['descanso', 'Descanso'])
+          .order('id_plani', { ascending: true })
+          .limit(1);
+
+        const planMatch = (plani ?? [])[0] as ConvocatoriaPlani | undefined;
+        if (!planMatch) continue;
+
+        const { data: conv } = await supabase
+          .from('convocatoria')
+          .select('id_convocatoria, estado')
+          .eq('id_plani', planMatch.id_plani)
+          .eq('id_agente', idAgente)
+          .maybeSingle();
+
+        if (conv?.estado === 'vigente') continue;
+
+        if (conv?.estado === 'cancelada') {
+          await supabase
+            .from('convocatoria')
+            .update({ estado: 'vigente' })
+            .eq('id_convocatoria', conv.id_convocatoria);
+        } else {
+          await supabase.from('convocatoria').insert({
+            id_plani: planMatch.id_plani,
+            id_agente: idAgente,
+            id_turno: planMatch.id_turno,
+            fecha_convocatoria: diaSolicitado,
+            estado: 'vigente',
+          });
+        }
+      }
+    }
+
+    return { successes, failures };
+  }, []);
 
   const massActions = [
     {
@@ -575,7 +675,7 @@ export default function DescansosPage() {
                           ? 'bg-red-100'
                           : isPendingAdd
                             ? 'bg-teal-100'
-                            : cell.hasDescanso && !cell.hasCargaManual
+                            : cell.inConvocatoria
                               ? 'bg-sky-100'
                               : 'bg-white';
                         return (
@@ -614,13 +714,13 @@ export default function DescansosPage() {
         <div className="flex items-center justify-center h-48 text-gray-500">Cargando registros...</div>
       ) : (
         <DataTable<DescansoDraft>
-          key={refreshVersion}
           tableName="descansos"
           pkField="id_desc"
           deleteMode="immediate"
           initialData={data}
           columns={columns}
           onRefresh={fetchData}
+          onBatchUpdate={handleDescansoBatchUpdate}
           buildNewRow={() => ({ ...newDescansoTemplate })}
           customMassActions={massActions}
         />

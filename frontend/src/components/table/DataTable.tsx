@@ -63,6 +63,22 @@ export default function DataTable<T extends object>(props: DataTableProps<T>) {
     }))
   );
 
+  // Sync when parent re-fetches data without unmounting (preserves pagination state)
+  const prevDataRef = useRef<T[]>(initialData);
+  useEffect(() => {
+    if (initialData === prevDataRef.current) return;
+    prevDataRef.current = initialData;
+    setRows(
+      initialData.map((d) => ({
+        _id: d[pkField] !== null && d[pkField] !== undefined ? String(d[pkField]) : uuidv4(),
+        _status: 'original',
+        _original: d,
+        data: { ...d },
+      }))
+    );
+    setSelectedIds(new Set());
+  }, [initialData, pkField]);
+
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showConfirm, setShowConfirm] = useState(false);
   const [saving, setSaving] = useState(false);

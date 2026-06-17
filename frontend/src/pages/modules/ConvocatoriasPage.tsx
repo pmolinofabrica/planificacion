@@ -404,6 +404,22 @@ export default function ConvocatoriasPage() {
     setBulkPendingRows(prev => [...newRows, ...prev]);
   };
 
+  const addTodosLosGrupos = () => {
+    const todos = [...agentes]
+      .filter(a => a.grupo_capacitacion === 'A' || a.grupo_capacitacion === 'B')
+      .sort((a, b) => a.apellido.localeCompare(b.apellido));
+    const newRows = todos.map(a => makeTemplate({
+      dni: a.dni,
+      id_agente: a.id_agente,
+      agente: `${a.apellido}, ${a.nombre}`,
+      id_plani: bulkPlaniId ?? 0,
+      id_turno: planiMetaForBulk?.id_turno ?? 0,
+      fecha_turno: planiMetaForBulk?.fecha_turno ?? '',
+      tipo_turno: planiMetaForBulk?.tipo_turno ?? '',
+    }));
+    setBulkPendingRows(prev => [...newRows, ...prev]);
+  };
+
   const addAgentesPorDiaYGrupo = (diaSemana: number, grupo: 'manana' | 'tarde') => {
     const ids = new Set(
       agentesGruposDias
@@ -729,9 +745,9 @@ export default function ConvocatoriasPage() {
                 + GRUPO B ({agentes.filter(a => a.grupo_capacitacion === 'B').length})
               </button>
               <button
-                onClick={() => { addGrupo('A'); addGrupo('B'); }}
+                onClick={addTodosLosGrupos}
                 className="bg-surface-container-high text-on-surface-variant px-3 py-1.5 rounded-lg text-[11px] font-bold font-headline uppercase tracking-wider hover:bg-surface-dim transition-all border border-outline-variant/20 active:scale-95"
-                title="Agregar los 36 residentes (A + B)"
+                title="Agregar los 36 residentes (A + B) ordenados por apellido"
               >
                 +36 (TODOS)
               </button>

@@ -32,7 +32,6 @@ export default function TardanzasPage() {
   const [data, setData] = useState<TardanzaDraft[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [refreshVersion, setRefreshVersion] = useState(0);
   const [agentesOptions, setAgentesOptions] = useState<{value: number, label: string}[]>([]);
   const [filtroAnio, setFiltroAnio] = useState(new Date().getFullYear());
   const [latestDate, setLatestDate] = useState<string | null>(null);
@@ -78,7 +77,6 @@ export default function TardanzasPage() {
       setData(raw);
     }
 
-    setRefreshVersion((v) => v + 1);
     setLoading(false);
   }, [filtroAnio]);
 
@@ -121,7 +119,6 @@ export default function TardanzasPage() {
         <div className="flex items-center justify-center h-48 text-gray-500">Cargando registros…</div>
       ) : (
         <DataTable<TardanzaDraft>
-          key={refreshVersion}
           tableName="tardanzas"
           pkField="id_tardanza"
           deleteMode="immediate"
