@@ -35,6 +35,7 @@ BEGIN
           AND COALESCE(c.turno_cancelado, false) = false
           AND dp.activo = true
           AND dp.cohorte = p_anio
+          AND (t.tipo_turno IS NULL OR LOWER(t.tipo_turno) <> 'descanso')
         GROUP BY c.id_agente
     )
     INSERT INTO saldos (
@@ -77,6 +78,8 @@ BEGIN
       AND dp.cohorte = p_anio;
 END;
 $function$;
+
+DROP VIEW IF EXISTS public.vista_dashboard_saldos CASCADE;
 
 CREATE OR REPLACE VIEW public.vista_dashboard_saldos AS
 WITH horas_desglosadas AS (
@@ -141,6 +144,7 @@ WITH horas_desglosadas AS (
     LEFT JOIN turnos t ON COALESCE(c.id_turno, p.id_turno) = t.id_turno
     WHERE c.estado = ANY (ARRAY['vigente', 'cumplida'])
       AND COALESCE(c.turno_cancelado, false) = false
+      AND (t.tipo_turno IS NULL OR LOWER(t.tipo_turno) <> 'descanso')
     GROUP BY c.id_agente, d.anio, d.mes
 )
 SELECT
@@ -167,4 +171,8 @@ JOIN datos_personales dp ON s.id_agente = dp.id_agente
 LEFT JOIN horas_desglosadas hd
     ON s.id_agente = hd.id_agente
    AND s.anio = hd.anio
-   AND s.mes = hd.mes;
+    AND s.mes = hd.mes;
+
+GRANT SELECT ON public.vista_dashboard_saldos TO anon;
+GRANT SELECT ON public.vista_dashboard_saldos TO authenticated;
+GRANT SELECT ON public.vista_dashboard_saldos TO service_role;
