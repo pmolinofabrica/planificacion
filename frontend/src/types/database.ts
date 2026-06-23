@@ -102,6 +102,7 @@ export interface Database {
           motivo: string
           estado: string | null
           requiere_certificado: boolean | null
+          "6ta_tardanza": boolean | null
           observaciones: string | null
           fecha_aviso: string | null
         }
@@ -165,6 +166,7 @@ export interface InasistenciaView {
   motivo: string
   estado: string | null
   requiere_certificado: boolean | null
+  "6ta_tardanza": boolean | null
   observaciones: string | null
   fecha_aviso: string | null
 }

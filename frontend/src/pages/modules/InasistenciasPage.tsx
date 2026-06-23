@@ -17,6 +17,7 @@ const columns: ColumnDef<TrackedRow<InasistenciaDraft>>[] = [
   editableColumn<InasistenciaDraft>('motivo', 'Motivo'),
   editableColumn<InasistenciaDraft>('estado', 'Estado'),
   editableColumn<InasistenciaDraft>('requiere_certificado', 'Req. Certificado', 'boolean'),
+  editableColumn<InasistenciaDraft>('6ta_tardanza', '6ta Tardanza', 'boolean'),
   editableColumn<InasistenciaDraft>('observaciones', 'Observaciones'),
 ];
 
@@ -30,6 +31,7 @@ const newInasistenciaTemplate: InasistenciaDraft = {
   motivo: 'ENFERMEDAD',
   estado: 'PENDIENTE',
   requiere_certificado: true,
+  "6ta_tardanza": false,
   observaciones: null,
   fecha_aviso: new Date().toISOString(),
 };
@@ -76,6 +78,7 @@ export default function InasistenciasPage() {
       motivo: i.motivo,
       estado: i.estado,
       requiere_certificado: i.requiere_certificado,
+      "6ta_tardanza": i["6ta_tardanza"],
       observaciones: i.observaciones
     }));
 
