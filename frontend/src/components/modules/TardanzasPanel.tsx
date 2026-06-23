@@ -109,8 +109,7 @@ export default function TardanzasPanel() {
         .select('id_agente, fecha_inasistencia')
         .gte('fecha_inasistencia', since)
         .lte('fecha_inasistencia', until)
-        .eq('motivo', 'IMPREVISTO')
-        .order('fecha_inasistencia', { ascending: true }),
+        .eq('motivo', 'IMPREVISTO'),
     ]);
 
     if (tardRes.error) {
