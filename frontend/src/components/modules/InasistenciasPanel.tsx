@@ -53,9 +53,22 @@ export default function InasistenciasPanel() {
   const [globalJustificadas, setGlobalJustificadas] = useState(0);
   const [globalInjustificadas, setGlobalInjustificadas] = useState(0);
   const [global6ta, setGlobal6ta] = useState(0);
+
+  const todayIso = () => new Date().toISOString().split('T')[0];
+  const [selectedDate, setSelectedDate] = useState(todayIso());
+  const [cardJustificadas, setCardJustificadas] = useState(0);
+  const [cardInjustificadas, setCardInjustificadas] = useState(0);
+  const [card6ta, setCard6ta] = useState(0);
+  const [cardLoading, setCardLoading] = useState(false);
+
   const [popupAgent, setPopupAgent] = useState<{ id_agente: number; nombre: string } | null>(null);
   const [popupRows, setPopupRows] = useState<InasistenciaPopup[]>([]);
   const [popupLoading, setPopupLoading] = useState(false);
+
+  const [cardPopupOpen, setCardPopupOpen] = useState(false);
+  const [cardPopupTitle, setCardPopupTitle] = useState('');
+  const [cardPopupRows, setCardPopupRows] = useState<InasistenciaPopup[]>([]);
+  const [cardPopupLoading, setCardPopupLoading] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -149,6 +162,26 @@ export default function InasistenciasPanel() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
+  const fetchCardData = useCallback(async () => {
+    setCardLoading(true);
+    const { data: raw } = await supabase
+      .from('inasistencias')
+      .select('genera_descuento, "6ta_tardanza"')
+      .eq('fecha_inasistencia', selectedDate);
+
+    let just = 0, injust = 0, seis = 0;
+    for (const r of (raw ?? []) as any[]) {
+      if (r.genera_descuento) injust++; else just++;
+      if (r["6ta_tardanza"]) seis++;
+    }
+    setCardJustificadas(just);
+    setCardInjustificadas(injust);
+    setCard6ta(seis);
+    setCardLoading(false);
+  }, [selectedDate]);
+
+  useEffect(() => { fetchCardData(); }, [fetchCardData]);
+
   const openPopup = async (ag: ResidentRow) => {
     setPopupAgent({ id_agente: ag.id_agente, nombre: ag.nombre });
     setPopupLoading(true);
@@ -176,6 +209,45 @@ export default function InasistenciasPanel() {
     setPopupRows([]);
   };
 
+  const openCardPopup = async (title: string) => {
+    setCardPopupTitle(title);
+    setCardPopupOpen(true);
+    setCardPopupLoading(true);
+    setCardPopupRows([]);
+
+    let query = supabase
+      .from('inasistencias')
+      .select(`
+        fecha_inasistencia,
+        motivo,
+        estado,
+        genera_descuento,
+        "6ta_tardanza",
+        requiere_certificado,
+        observaciones,
+        datos_personales!inner(id_agente, apellido, nombre)
+      `)
+      .eq('fecha_inasistencia', selectedDate);
+
+    if (title === '6ta Tardanza') {
+      query = query.eq('"6ta_tardanza"', true);
+    } else if (title === 'Injustificadas (G. Descuento)') {
+      query = query.eq('genera_descuento', true);
+    } else {
+      query = query.eq('genera_descuento', false);
+    }
+
+    const { data } = await query.order('fecha_inasistencia', { ascending: false });
+
+    if (data) setCardPopupRows(data as any[]);
+    setCardPopupLoading(false);
+  };
+
+  const closeCardPopup = () => {
+    setCardPopupOpen(false);
+    setCardPopupRows([]);
+  };
+
   const getImprevistoColor = (count: number) => {
     if (count >= 4) return 'text-red-700 bg-red-50';
     if (count === 3) return 'text-orange-700 bg-orange-50';
@@ -189,27 +261,45 @@ export default function InasistenciasPanel() {
           Inasistencias {new Date().getFullYear()} ({rows.length} residentes)
           {loading && <span className="text-[10px] text-slate-400 italic font-normal">cargando…</span>}
         </div>
-        <button
-          onClick={fetchData}
-          disabled={loading}
-          className="bg-primary/10 text-primary px-3 py-1.5 rounded-lg text-[10px] font-bold font-headline uppercase tracking-wider hover:bg-primary/20 transition-all active:scale-95 disabled:opacity-50"
-        >
-          Refrescar
-        </button>
+        <div className="flex items-center gap-2">
+          <input
+            type="date"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            className="bg-white border border-outline-variant/30 rounded-lg px-2 py-1.5 text-[11px] font-mono"
+          />
+          <button
+            onClick={fetchData}
+            disabled={loading}
+            className="bg-primary/10 text-primary px-3 py-1.5 rounded-lg text-[10px] font-bold font-headline uppercase tracking-wider hover:bg-primary/20 transition-all active:scale-95 disabled:opacity-50"
+          >
+            Refrescar
+          </button>
+        </div>
       </div>
 
+      <div className="text-[10px] font-semibold text-on-surface-variant mb-2">Resumen diario {cardLoading && <span className="italic font-normal">cargando…</span>}</div>
       <div className="flex gap-3 mb-3">
-        <div className="flex-1 px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-200 text-center">
+        <div
+          onClick={() => openCardPopup('Justificadas')}
+          className="flex-1 px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-200 text-center cursor-pointer hover:bg-emerald-100 transition-colors active:scale-[0.98]"
+        >
           <div className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">Justificadas</div>
-          <div className="text-lg font-black text-emerald-800">{globalJustificadas}</div>
+          <div className="text-lg font-black text-emerald-800">{cardJustificadas}</div>
         </div>
-        <div className="flex-1 px-3 py-2 rounded-lg bg-red-50 border border-red-200 text-center">
+        <div
+          onClick={() => openCardPopup('Injustificadas (G. Descuento)')}
+          className="flex-1 px-3 py-2 rounded-lg bg-red-50 border border-red-200 text-center cursor-pointer hover:bg-red-100 transition-colors active:scale-[0.98]"
+        >
           <div className="text-[10px] font-bold text-red-700 uppercase tracking-wider">Injustificadas (G. Descuento)</div>
-          <div className="text-lg font-black text-red-800">{globalInjustificadas}</div>
+          <div className="text-lg font-black text-red-800">{cardInjustificadas}</div>
         </div>
-        <div className="flex-1 px-3 py-2 rounded-lg bg-orange-50 border border-orange-200 text-center">
+        <div
+          onClick={() => openCardPopup('6ta Tardanza')}
+          className="flex-1 px-3 py-2 rounded-lg bg-orange-50 border border-orange-200 text-center cursor-pointer hover:bg-orange-100 transition-colors active:scale-[0.98]"
+        >
           <div className="text-[10px] font-bold text-orange-700 uppercase tracking-wider">6ta Tardanza</div>
-          <div className="text-lg font-black text-orange-800">{global6ta}</div>
+          <div className="text-lg font-black text-orange-800">{card6ta}</div>
         </div>
       </div>
 
@@ -325,6 +415,59 @@ export default function InasistenciasPanel() {
                           <span className={`inline-block px-1.5 py-0.5 rounded ${getMotivoClass(d.motivo)}`}>
                             {d.motivo}
                           </span>
+                        </td>
+                        <td className="py-1.5 px-2 text-center font-mono">{d["6ta_tardanza"] ? '✓' : '—'}</td>
+                        <td className="py-1.5 px-2 text-center font-mono">{d.genera_descuento ? '✓' : '—'}</td>
+                        <td className="py-1.5 px-2 text-gray-600 truncate max-w-[120px]" title={d.observaciones ?? ''}>{d.observaciones ?? '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {cardPopupOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-start justify-center pt-10 bg-black/30 backdrop-blur-sm"
+          onClick={closeCardPopup}
+        >
+          <div
+            className="bg-white rounded-xl shadow-2xl border border-outline-variant/20 w-full max-w-lg mx-4 max-h-[70vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-4 py-3 border-b border-outline-variant/20">
+              <h3 className="font-headline uppercase tracking-wider text-xs font-bold text-primary">
+                {cardPopupTitle} — {selectedDate}
+              </h3>
+              <button onClick={closeCardPopup} className="text-gray-400 hover:text-gray-600 text-xl leading-none p-1">&times;</button>
+            </div>
+            <div className="overflow-y-auto flex-1 p-3">
+              {cardPopupLoading ? (
+                <div className="text-xs text-slate-400 italic py-4 text-center">Cargando…</div>
+              ) : cardPopupRows.length === 0 ? (
+                <div className="text-xs text-slate-400 italic py-4 text-center">Sin registros.</div>
+              ) : (
+                <table className="w-full text-left text-xs">
+                  <thead className="sticky top-0 bg-white z-10">
+                    <tr className="border-b border-outline-variant/20">
+                      <th className="py-1.5 px-2 font-semibold text-on-surface-variant">Residente</th>
+                      <th className="py-1.5 px-2 font-semibold text-on-surface-variant">Fecha</th>
+                      <th className="py-1.5 px-2 font-semibold text-on-surface-variant">Motivo</th>
+                      <th className="py-1.5 px-2 font-semibold text-on-surface-variant text-center">6ta</th>
+                      <th className="py-1.5 px-2 font-semibold text-on-surface-variant text-center">Desc.</th>
+                      <th className="py-1.5 px-2 font-semibold text-on-surface-variant">Obs.</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cardPopupRows.map((d, i) => (
+                      <tr key={i} className="border-b border-outline-variant/10 hover:bg-surface-container-low transition-colors">
+                        <td className="py-1.5 px-2 font-medium">{d.datos_personales?.apellido}, {d.datos_personales?.nombre}</td>
+                        <td className="py-1.5 px-2 font-mono whitespace-nowrap">{d.fecha_inasistencia}</td>
+                        <td className="py-1.5 px-2">
+                          <span className={`inline-block px-1.5 py-0.5 rounded ${getMotivoClass(d.motivo)}`}>{d.motivo}</span>
                         </td>
                         <td className="py-1.5 px-2 text-center font-mono">{d["6ta_tardanza"] ? '✓' : '—'}</td>
                         <td className="py-1.5 px-2 text-center font-mono">{d.genera_descuento ? '✓' : '—'}</td>
