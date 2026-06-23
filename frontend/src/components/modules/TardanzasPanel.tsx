@@ -6,6 +6,8 @@ type TardanzaResumen = {
   apellido: string;
   nombre: string;
   total_tardanzas: number;
+  total_6ta_tardanza: number;
+  lastImprevistoMes: number | null;
 };
 
 type TardanzaDetalle = {
@@ -21,6 +23,7 @@ type ConvocadoRow = {
   id_agente: number;
   agente: string;
   total_tardanzas: number;
+  total_6ta_tardanza: number;
   checked: boolean;
   saving: boolean;
   error: string | null;
@@ -30,6 +33,8 @@ type TurnoOption = {
   id_turno: number;
   tipo_turno: string;
 };
+
+const MONTH_NAMES_SHORT = ['', 'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 
 const todayIso = () => new Date().toISOString().split('T')[0];
 const currentYear = new Date().getFullYear();
@@ -56,6 +61,7 @@ export default function TardanzasPanel() {
   const [popupAgent, setPopupAgent] = useState<{ nombre: string; id_agente: number } | null>(null);
   const [popupRows, setPopupRows] = useState<TardanzaDetalle[]>([]);
   const [popupLoading, setPopupLoading] = useState(false);
+  const [popupInas6ta, setPopupInas6ta] = useState<Array<{ fecha_inasistencia: string; motivo: string }>>([]);
 
   const [turnoOptions, setTurnoOptions] = useState<TurnoOption[]>([]);
   const [selectedDate, setSelectedDate] = useState(todayIso());
@@ -75,7 +81,7 @@ export default function TardanzasPanel() {
     const since = `${year}-01-01`;
     const until = `${year}-12-31`;
 
-    const [latestRes, { data, error: err }] = await Promise.all([
+    const [latestRes, tardRes, inas6taRes, inasImpRes] = await Promise.all([
       supabase
         .from('tardanzas')
         .select('created_at')
@@ -92,10 +98,22 @@ export default function TardanzasPanel() {
         `)
         .gte('fecha', since)
         .lte('fecha', until),
+      supabase
+        .from('inasistencias')
+        .select('id_agente')
+        .gte('fecha_inasistencia', since)
+        .lte('fecha_inasistencia', until)
+        .eq('6ta_tardanza', true),
+      supabase
+        .from('inasistencias')
+        .select('id_agente, fecha_inasistencia')
+        .gte('fecha_inasistencia', since)
+        .lte('fecha_inasistencia', until)
+        .eq('motivo', 'IMPREVISTO'),
     ]);
 
-    if (err) {
-      setError('Error al cargar tardanzas: ' + err.message);
+    if (tardRes.error) {
+      setError('Error al cargar tardanzas: ' + tardRes.error.message);
       setRows([]);
       setLoading(false);
       return;
@@ -103,10 +121,21 @@ export default function TardanzasPanel() {
 
     setLatestDate(latestRes?.data?.created_at ? latestRes.data.created_at.toString().split('T')[0] : null);
 
-    const raw = (data ?? []) as Array<{
+    const raw = (tardRes.data ?? []) as Array<{
       id_agente: number;
       datos_personales: { apellido: string; nombre: string; dni: string };
     }>;
+
+    const count6ta = new Map<number, number>();
+    for (const r of (inas6taRes.data ?? []) as Array<{ id_agente: number }>) {
+      count6ta.set(r.id_agente, (count6ta.get(r.id_agente) ?? 0) + 1);
+    }
+
+    const lastImprevisto = new Map<number, number>();
+    for (const r of (inasImpRes.data ?? []) as Array<{ id_agente: number; fecha_inasistencia: string }>) {
+      const mes = new Date(r.fecha_inasistencia + 'T00:00:00').getMonth() + 1;
+      lastImprevisto.set(r.id_agente, mes);
+    }
 
     const map = new Map<number, TardanzaResumen>();
     for (const r of raw) {
@@ -119,8 +148,39 @@ export default function TardanzasPanel() {
           apellido: r.datos_personales.apellido,
           nombre: r.datos_personales.nombre,
           total_tardanzas: 1,
+          total_6ta_tardanza: count6ta.get(r.id_agente) ?? 0,
+          lastImprevistoMes: lastImprevisto.get(r.id_agente) ?? null,
         });
       }
+    }
+
+    const missingIds = [...count6ta.keys()].filter(id => !map.has(id));
+    if (missingIds.length > 0) {
+      const { data: dps } = await supabase
+        .from('datos_personales')
+        .select('id_agente, apellido, nombre')
+        .in('id_agente', missingIds);
+      for (const dp of (dps ?? [])) {
+        map.set(dp.id_agente, {
+          id_agente: dp.id_agente,
+          apellido: dp.apellido,
+          nombre: dp.nombre,
+          total_tardanzas: 0,
+          total_6ta_tardanza: count6ta.get(dp.id_agente) ?? 0,
+          lastImprevistoMes: lastImprevisto.get(dp.id_agente) ?? null,
+        });
+      }
+    }
+    for (const [idAgente, count] of count6ta) {
+      const existing = map.get(idAgente);
+      if (existing) {
+        existing.total_6ta_tardanza = count;
+        if (lastImprevisto.has(idAgente)) existing.lastImprevistoMes = lastImprevisto.get(idAgente)!;
+      }
+    }
+    for (const [idAgente, mes] of lastImprevisto) {
+      const existing = map.get(idAgente);
+      if (existing && !count6ta.has(idAgente)) existing.lastImprevistoMes = mes;
     }
 
     setRows(
@@ -184,12 +244,21 @@ export default function TardanzasPanel() {
 
     const agentIds = rawConvocados.map(c => c.id_agente);
 
-    const { data: tardanzasData } = await supabase
-      .from('tardanzas')
-      .select('id_tardanza, id_agente, fecha')
-      .gte('fecha', `${currentYear}-01-01`)
-      .lte('fecha', `${currentYear}-12-31`)
-      .in('id_agente', agentIds);
+    const [{ data: tardanzasData }, { data: inas6taData }] = await Promise.all([
+      supabase
+        .from('tardanzas')
+        .select('id_tardanza, id_agente, fecha')
+        .gte('fecha', `${currentYear}-01-01`)
+        .lte('fecha', `${currentYear}-12-31`)
+        .in('id_agente', agentIds),
+      supabase
+        .from('inasistencias')
+        .select('id_agente')
+        .gte('fecha_inasistencia', `${currentYear}-01-01`)
+        .lte('fecha_inasistencia', `${currentYear}-12-31`)
+        .eq('6ta_tardanza', true)
+        .in('id_agente', agentIds),
+    ]);
 
     const normDate = (d: unknown): string => {
       if (!d) return '';
@@ -207,6 +276,11 @@ export default function TardanzasPanel() {
       }
     }
 
+    const inas6taPorAgente = new Map<number, number>();
+    for (const r of (inas6taData ?? []) as Array<{ id_agente: number }>) {
+      inas6taPorAgente.set(r.id_agente, (inas6taPorAgente.get(r.id_agente) ?? 0) + 1);
+    }
+
     setTardanzaIdMap(tardFechaMap);
 
     setConvocados(
@@ -215,6 +289,7 @@ export default function TardanzasPanel() {
         id_agente: c.id_agente,
         agente: c.agente,
         total_tardanzas: tardPorAgente.get(c.id_agente) ?? 0,
+        total_6ta_tardanza: inas6taPorAgente.get(c.id_agente) ?? 0,
         checked: tardFechaMap.has(c.id_agente),
         saving: false,
         error: null,
@@ -332,21 +407,33 @@ export default function TardanzasPanel() {
     setPopupAgent({ nombre: `${ag.apellido}, ${ag.nombre}`, id_agente: ag.id_agente });
     setPopupLoading(true);
     setPopupRows([]);
+    setPopupInas6ta([]);
 
     const year = new Date().getFullYear();
-    const { data, error: err } = await supabase
-      .from('tardanzas')
-      .select('id_tardanza, fecha, accion_aplicada, created_at, observaciones')
-      .eq('id_agente', ag.id_agente)
-      .gte('fecha', `${year}-01-01`)
-      .lte('fecha', `${year}-12-31`)
-      .order('fecha', { ascending: false });
+    const [tardRes, inasRes] = await Promise.all([
+      supabase
+        .from('tardanzas')
+        .select('id_tardanza, fecha, accion_aplicada, created_at, observaciones')
+        .eq('id_agente', ag.id_agente)
+        .gte('fecha', `${year}-01-01`)
+        .lte('fecha', `${year}-12-31`)
+        .order('fecha', { ascending: false }),
+      supabase
+        .from('inasistencias')
+        .select('fecha_inasistencia, motivo')
+        .eq('id_agente', ag.id_agente)
+        .gte('fecha_inasistencia', `${year}-01-01`)
+        .lte('fecha_inasistencia', `${year}-12-31`)
+        .eq('6ta_tardanza', true)
+        .order('fecha_inasistencia', { ascending: false }),
+    ]);
 
-    if (err) {
-      setError('Error al cargar detalle: ' + err.message);
+    if (tardRes.error) {
+      setError('Error al cargar detalle: ' + tardRes.error.message);
     } else {
-      setPopupRows((data ?? []) as TardanzaDetalle[]);
+      setPopupRows((tardRes.data ?? []) as TardanzaDetalle[]);
     }
+    setPopupInas6ta((inasRes.data ?? []) as Array<{ fecha_inasistencia: string; motivo: string }>);
     setPopupLoading(false);
   };
 
@@ -366,118 +453,6 @@ export default function TardanzasPanel() {
 
   return (
     <div className="space-y-4">
-      <div className="p-3 bg-surface-container-lowest/70 backdrop-blur-md rounded-xl border border-outline-variant/10 shadow-sm">
-        <div className="flex items-center justify-between mb-3 gap-2">
-          <div className="text-xs font-bold text-primary font-headline uppercase tracking-wider flex items-center gap-2">
-            Tardanzas {new Date().getFullYear()} ({rows.length} residentes)
-            {latestDate && (
-              <span className="ml-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-mono text-[10px] font-bold tracking-normal">
-                {latestDate}
-              </span>
-            )}
-            {loading && <span className="text-[10px] text-slate-400 italic font-normal">cargando…</span>}
-          </div>
-          <button
-            onClick={fetchData}
-            disabled={loading}
-            className="bg-primary/10 text-primary px-3 py-1.5 rounded-lg text-[10px] font-bold font-headline uppercase tracking-wider hover:bg-primary/20 transition-all active:scale-95 disabled:opacity-50"
-          >
-            Refrescar
-          </button>
-        </div>
-
-        {error && <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded mb-3 text-xs">{error}</div>}
-
-        {!loading && rows.length === 0 && !error && (
-          <div className="text-xs text-slate-400 italic py-2">No hay tardanzas registradas este año.</div>
-        )}
-
-        {rows.length > 0 && (
-          <div className="overflow-x-auto max-h-[60vh] overflow-y-auto">
-            <table className="w-full text-left text-xs">
-              <colgroup>
-                <col style={{ width: '60%' }} />
-                <col style={{ width: '40%' }} />
-              </colgroup>
-              <thead className="sticky top-0 bg-surface-container-lowest/90 backdrop-blur-sm z-10">
-                <tr className="border-b border-outline-variant/20">
-                  <th className="py-2 px-2 font-semibold text-on-surface-variant">Residente</th>
-                  <th className="py-2 px-2 font-semibold text-on-surface-variant text-right">Tardanzas</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map(r => (
-                  <tr
-                    key={r.id_agente}
-                    onClick={() => openPopup(r)}
-                    className="border-b border-outline-variant/10 hover:bg-primary/5 transition-colors cursor-pointer active:scale-[0.99]"
-                  >
-                    <td className="py-1.5 px-2 font-medium truncate">{r.apellido}, {r.nombre}</td>
-                    <td className="py-1.5 px-2 text-right font-mono font-bold">
-                      <span className={r.total_tardanzas > 5 ? 'text-red-600' : r.total_tardanzas > 2 ? 'text-amber-600' : 'text-gray-700'}>
-                        {r.total_tardanzas}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {popupAgent && (
-          <div
-            className="fixed inset-0 z-50 flex items-start justify-center pt-10 bg-black/30 backdrop-blur-sm"
-            onClick={closePopup}
-          >
-            <div
-              className="bg-white rounded-xl shadow-2xl border border-outline-variant/20 w-full max-w-lg mx-4 max-h-[70vh] flex flex-col"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between px-4 py-3 border-b border-outline-variant/20">
-                <h3 className="font-headline uppercase tracking-wider text-xs font-bold text-primary">
-                  Tardanzas — {popupAgent.nombre}
-                </h3>
-                <button
-                  onClick={closePopup}
-                  className="text-gray-400 hover:text-gray-600 text-xl leading-none p-1"
-                >
-                  &times;
-                </button>
-              </div>
-              <div className="overflow-y-auto flex-1 p-3">
-                {popupLoading ? (
-                  <div className="text-xs text-slate-400 italic py-4 text-center">Cargando…</div>
-                ) : popupRows.length === 0 ? (
-                  <div className="text-xs text-slate-400 italic py-4 text-center">Sin tardanzas registradas.</div>
-                ) : (
-                  <table className="w-full text-left text-xs">
-                    <thead className="sticky top-0 bg-white z-10">
-                      <tr className="border-b border-outline-variant/20">
-                        <th className="py-1.5 px-2 font-semibold text-on-surface-variant">Fecha</th>
-                        <th className="py-1.5 px-2 font-semibold text-on-surface-variant">Acción</th>
-                        <th className="py-1.5 px-2 font-semibold text-on-surface-variant">Fecha Carga</th>
-                        <th className="py-1.5 px-2 font-semibold text-on-surface-variant">Obs.</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {popupRows.map(d => (
-                        <tr key={d.id_tardanza} className="border-b border-outline-variant/10 hover:bg-surface-container-low transition-colors">
-                          <td className="py-1.5 px-2 font-mono whitespace-nowrap">{d.fecha}</td>
-                          <td className="py-1.5 px-2">{d.accion_aplicada ?? '—'}</td>
-                          <td className="py-1.5 px-2 font-mono text-gray-500">{d.created_at ? d.created_at.toString().split('T')[0] : '—'}</td>
-                          <td className="py-1.5 px-2 text-gray-600 truncate max-w-[120px]" title={d.observaciones ?? ''}>{d.observaciones ?? '—'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
       <div className="p-3 bg-surface-container-lowest/70 backdrop-blur-md rounded-xl border border-outline-variant/10 shadow-sm">
         <div className="flex items-center justify-between mb-3 gap-2">
           <div className="text-xs font-bold text-primary font-headline uppercase tracking-wider">
@@ -541,14 +516,16 @@ export default function TardanzasPanel() {
           <div className="overflow-x-auto max-h-[50vh] overflow-y-auto">
             <table className="w-full text-left text-xs">
               <colgroup>
-                <col style={{ width: '50%' }} />
-                <col style={{ width: '28%' }} />
+                <col style={{ width: '40%' }} />
                 <col style={{ width: '22%' }} />
+                <col style={{ width: '18%' }} />
+                <col style={{ width: '20%' }} />
               </colgroup>
               <thead className="sticky top-0 bg-surface-container-lowest/90 backdrop-blur-sm z-10">
                 <tr className="border-b border-outline-variant/20">
                   <th className="py-2 px-2 font-semibold text-on-surface-variant">Residente</th>
                   <th className="py-2 px-2 font-semibold text-on-surface-variant text-center">Tardanzas (año)</th>
+                  <th className="py-2 px-2 font-semibold text-on-surface-variant text-center">Inasist. 6ta</th>
                   <th className="py-2 px-2 font-semibold text-on-surface-variant text-center">Marca</th>
                 </tr>
               </thead>
@@ -562,6 +539,11 @@ export default function TardanzasPanel() {
                     <td className="py-1.5 px-2 text-center font-mono font-bold">
                       <span className={c.total_tardanzas > 5 ? 'text-red-600' : c.total_tardanzas > 2 ? 'text-amber-600' : 'text-gray-700'}>
                         {c.total_tardanzas}
+                      </span>
+                    </td>
+                    <td className="py-1.5 px-2 text-center font-mono font-bold">
+                      <span className={c.total_6ta_tardanza > 0 ? 'text-red-600' : 'text-gray-400'}>
+                        {c.total_6ta_tardanza}
                       </span>
                     </td>
                     <td className="py-1.5 px-2 text-center">
@@ -591,6 +573,162 @@ export default function TardanzasPanel() {
             >
               {savingTardanzas ? 'Guardando…' : `Guardar (${dirtyCount})`}
             </button>
+          </div>
+        )}
+      </div>
+
+      <div className="p-3 bg-surface-container-lowest/70 backdrop-blur-md rounded-xl border border-outline-variant/10 shadow-sm">
+        <div className="flex items-center justify-between mb-3 gap-2">
+          <div className="text-xs font-bold text-primary font-headline uppercase tracking-wider flex items-center gap-2">
+            Tardanzas {new Date().getFullYear()} ({rows.length} residentes)
+            {latestDate && (
+              <span className="ml-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-mono text-[10px] font-bold tracking-normal">
+                {latestDate}
+              </span>
+            )}
+            {loading && <span className="text-[10px] text-slate-400 italic font-normal">cargando…</span>}
+          </div>
+          <button
+            onClick={fetchData}
+            disabled={loading}
+            className="bg-primary/10 text-primary px-3 py-1.5 rounded-lg text-[10px] font-bold font-headline uppercase tracking-wider hover:bg-primary/20 transition-all active:scale-95 disabled:opacity-50"
+          >
+            Refrescar
+          </button>
+        </div>
+
+        {error && <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded mb-3 text-xs">{error}</div>}
+
+        {!loading && rows.length === 0 && !error && (
+          <div className="text-xs text-slate-400 italic py-2">No hay tardanzas registradas este año.</div>
+        )}
+
+        {rows.length > 0 && (
+          <div className="overflow-x-auto max-h-[60vh] overflow-y-auto">
+            <table className="w-full text-left text-xs">
+              <colgroup>
+                <col style={{ width: '40%' }} />
+                <col style={{ width: '22%' }} />
+                <col style={{ width: '18%' }} />
+                <col style={{ width: '20%' }} />
+              </colgroup>
+              <thead className="sticky top-0 bg-surface-container-lowest/90 backdrop-blur-sm z-10">
+                <tr className="border-b border-outline-variant/20">
+                  <th className="py-2 px-2 font-semibold text-on-surface-variant">Residente</th>
+                  <th className="py-2 px-2 font-semibold text-on-surface-variant text-right">Tardanzas</th>
+                  <th className="py-2 px-2 font-semibold text-on-surface-variant text-right">Inasist. 6ta</th>
+                  <th className="py-2 px-2 font-semibold text-on-surface-variant text-center">Mes Imp</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map(r => (
+                  <tr
+                    key={r.id_agente}
+                    onClick={() => openPopup(r)}
+                    className="border-b border-outline-variant/10 hover:bg-primary/5 transition-colors cursor-pointer active:scale-[0.99]"
+                  >
+                    <td className="py-1.5 px-2 font-medium truncate">{r.apellido}, {r.nombre}</td>
+                    <td className="py-1.5 px-2 text-right font-mono font-bold">
+                      <span className={r.total_tardanzas > 5 ? 'text-red-600' : r.total_tardanzas > 2 ? 'text-amber-600' : 'text-gray-700'}>
+                        {r.total_tardanzas}
+                      </span>
+                    </td>
+                    <td className="py-1.5 px-2 text-right font-mono font-bold">
+                      <span className={r.total_6ta_tardanza > 0 ? 'text-red-600' : 'text-gray-400'}>
+                        {r.total_6ta_tardanza}
+                      </span>
+                    </td>
+                    <td className="py-1.5 px-2 text-center font-mono">
+                      {r.lastImprevistoMes ? (
+                        <span className={r.lastImprevistoMes === new Date().getMonth() + 1 ? 'text-amber-600 font-bold' : 'text-gray-500'}>
+                          {MONTH_NAMES_SHORT[r.lastImprevistoMes]}
+                        </span>
+                      ) : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {popupAgent && (
+          <div
+            className="fixed inset-0 z-50 flex items-start justify-center pt-10 bg-black/30 backdrop-blur-sm"
+            onClick={closePopup}
+          >
+            <div
+              className="bg-white rounded-xl shadow-2xl border border-outline-variant/20 w-full max-w-lg mx-4 max-h-[70vh] flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between px-4 py-3 border-b border-outline-variant/20">
+                <h3 className="font-headline uppercase tracking-wider text-xs font-bold text-primary">
+                  Tardanzas — {popupAgent.nombre}
+                </h3>
+                <button
+                  onClick={closePopup}
+                  className="text-gray-400 hover:text-gray-600 text-xl leading-none p-1"
+                >
+                  &times;
+                </button>
+              </div>
+              <div className="overflow-y-auto flex-1 p-3">
+                {popupLoading ? (
+                  <div className="text-xs text-slate-400 italic py-4 text-center">Cargando…</div>
+                ) : popupRows.length === 0 && popupInas6ta.length === 0 ? (
+                  <div className="text-xs text-slate-400 italic py-4 text-center">Sin tardanzas registradas.</div>
+                ) : (
+                  <>
+                    {popupRows.length > 0 && (
+                      <>
+                        <h4 className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-2">Tardanzas</h4>
+                        <table className="w-full text-left text-xs mb-4">
+                          <thead className="sticky top-0 bg-white z-10">
+                            <tr className="border-b border-outline-variant/20">
+                              <th className="py-1.5 px-2 font-semibold text-on-surface-variant">Fecha</th>
+                              <th className="py-1.5 px-2 font-semibold text-on-surface-variant">Acción</th>
+                              <th className="py-1.5 px-2 font-semibold text-on-surface-variant">Fecha Carga</th>
+                              <th className="py-1.5 px-2 font-semibold text-on-surface-variant">Obs.</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {popupRows.map(d => (
+                              <tr key={d.id_tardanza} className="border-b border-outline-variant/10 hover:bg-surface-container-low transition-colors">
+                                <td className="py-1.5 px-2 font-mono whitespace-nowrap">{d.fecha}</td>
+                                <td className="py-1.5 px-2">{d.accion_aplicada ?? '—'}</td>
+                                <td className="py-1.5 px-2 font-mono text-gray-500">{d.created_at ? d.created_at.toString().split('T')[0] : '—'}</td>
+                                <td className="py-1.5 px-2 text-gray-600 truncate max-w-[120px]" title={d.observaciones ?? ''}>{d.observaciones ?? '—'}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </>
+                    )}
+                    {popupInas6ta.length > 0 && (
+                      <>
+                        <h4 className="text-[10px] font-bold text-orange-700 uppercase tracking-wider mb-2">Inasistencias 6ta Tardanza</h4>
+                        <table className="w-full text-left text-xs">
+                          <thead className="sticky top-0 bg-white z-10">
+                            <tr className="border-b border-outline-variant/20">
+                              <th className="py-1.5 px-2 font-semibold text-on-surface-variant">Fecha</th>
+                              <th className="py-1.5 px-2 font-semibold text-on-surface-variant">Motivo</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {popupInas6ta.map((d, i) => (
+                              <tr key={i} className="border-b border-outline-variant/10 hover:bg-surface-container-low transition-colors">
+                                <td className="py-1.5 px-2 font-mono whitespace-nowrap">{d.fecha_inasistencia}</td>
+                                <td className="py-1.5 px-2">{d.motivo}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
           </div>
         )}
       </div>

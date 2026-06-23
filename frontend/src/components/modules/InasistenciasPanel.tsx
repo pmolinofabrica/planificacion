@@ -5,6 +5,7 @@ type InasistenciaRaw = {
   id_agente: number;
   motivo: string;
   genera_descuento: boolean | null;
+  "6ta_tardanza": boolean | null;
   fecha_inasistencia: string;
   datos_personales: { apellido: string; nombre: string };
 };
@@ -15,6 +16,7 @@ type ResidentRow = {
   motivos: Record<string, number>;
   justificadas: number;
   injustificadas: number;
+  sixth_tardanza: number;
   lastImprevistoMes: number | null;
 };
 
@@ -23,6 +25,7 @@ type InasistenciaPopup = {
   motivo: string;
   estado: string | null;
   genera_descuento: boolean | null;
+  "6ta_tardanza": boolean | null;
   requiere_certificado: boolean | null;
   observaciones: string | null;
 };
@@ -49,6 +52,7 @@ export default function InasistenciasPanel() {
   const [allMotivos, setAllMotivos] = useState<string[]>([]);
   const [globalJustificadas, setGlobalJustificadas] = useState(0);
   const [globalInjustificadas, setGlobalInjustificadas] = useState(0);
+  const [global6ta, setGlobal6ta] = useState(0);
   const [popupAgent, setPopupAgent] = useState<{ id_agente: number; nombre: string } | null>(null);
   const [popupRows, setPopupRows] = useState<InasistenciaPopup[]>([]);
   const [popupLoading, setPopupLoading] = useState(false);
@@ -67,6 +71,7 @@ export default function InasistenciasPanel() {
         id_agente,
         motivo,
         genera_descuento,
+        "6ta_tardanza",
         fecha_inasistencia,
         datos_personales!inner(id_agente, apellido, nombre)
       `)
@@ -85,6 +90,7 @@ export default function InasistenciasPanel() {
     const agentMap = new Map<number, ResidentRow>();
     let justificadas = 0;
     let injustificadas = 0;
+    let cuenta6ta = 0;
 
     for (const r of raw) {
       const key = r.motivo?.toUpperCase() ?? 'OTRO';
@@ -98,6 +104,7 @@ export default function InasistenciasPanel() {
           motivos: {},
           justificadas: 0,
           injustificadas: 0,
+          sixth_tardanza: 0,
           lastImprevistoMes: null,
         };
         agentMap.set(r.id_agente, row);
@@ -112,6 +119,11 @@ export default function InasistenciasPanel() {
       } else {
         row.justificadas += 1;
         justificadas += 1;
+      }
+
+      if (r["6ta_tardanza"]) {
+        row.sixth_tardanza += 1;
+        cuenta6ta += 1;
       }
 
       if (key === 'IMPREVISTO') {
@@ -131,6 +143,7 @@ export default function InasistenciasPanel() {
     );
     setGlobalJustificadas(justificadas);
     setGlobalInjustificadas(injustificadas);
+    setGlobal6ta(cuenta6ta);
     setLoading(false);
   }, []);
 
@@ -144,7 +157,7 @@ export default function InasistenciasPanel() {
     const year = new Date().getFullYear();
     const { data, error: err } = await supabase
       .from('inasistencias')
-      .select('fecha_inasistencia, motivo, estado, genera_descuento, requiere_certificado, observaciones')
+      .select('fecha_inasistencia, motivo, estado, genera_descuento, "6ta_tardanza", requiere_certificado, observaciones')
       .eq('id_agente', ag.id_agente)
       .gte('fecha_inasistencia', `${year}-01-01`)
       .lte('fecha_inasistencia', `${year}-12-31`)
@@ -194,6 +207,10 @@ export default function InasistenciasPanel() {
           <div className="text-[10px] font-bold text-red-700 uppercase tracking-wider">Injustificadas (G. Descuento)</div>
           <div className="text-lg font-black text-red-800">{globalInjustificadas}</div>
         </div>
+        <div className="flex-1 px-3 py-2 rounded-lg bg-orange-50 border border-orange-200 text-center">
+          <div className="text-[10px] font-bold text-orange-700 uppercase tracking-wider">6ta Tardanza</div>
+          <div className="text-lg font-black text-orange-800">{global6ta}</div>
+        </div>
       </div>
 
       {error && <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded mb-3 text-xs">{error}</div>}
@@ -219,6 +236,7 @@ export default function InasistenciasPanel() {
                   }
                   return cols;
                 })}
+                <th className="py-2 px-2 font-semibold text-on-surface-variant text-center min-w-[60px]">6ta T.</th>
               </tr>
             </thead>
             <tbody>
@@ -251,6 +269,11 @@ export default function InasistenciasPanel() {
                     }
                     return cols;
                   })}
+                  <td className="py-1.5 px-2 text-center font-mono font-bold">
+                    <span className={r.sixth_tardanza > 0 ? 'text-orange-600' : 'text-gray-400'}>
+                      {r.sixth_tardanza > 0 ? r.sixth_tardanza : '—'}
+                    </span>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -289,7 +312,7 @@ export default function InasistenciasPanel() {
                     <tr className="border-b border-outline-variant/20">
                       <th className="py-1.5 px-2 font-semibold text-on-surface-variant">Fecha</th>
                       <th className="py-1.5 px-2 font-semibold text-on-surface-variant">Motivo</th>
-                      <th className="py-1.5 px-2 font-semibold text-on-surface-variant text-center">Estado</th>
+                      <th className="py-1.5 px-2 font-semibold text-on-surface-variant text-center">6ta</th>
                       <th className="py-1.5 px-2 font-semibold text-on-surface-variant text-center">Desc.</th>
                       <th className="py-1.5 px-2 font-semibold text-on-surface-variant">Obs.</th>
                     </tr>
@@ -303,7 +326,7 @@ export default function InasistenciasPanel() {
                             {d.motivo}
                           </span>
                         </td>
-                        <td className="py-1.5 px-2 text-center font-mono">{d.estado ?? '—'}</td>
+                        <td className="py-1.5 px-2 text-center font-mono">{d["6ta_tardanza"] ? '✓' : '—'}</td>
                         <td className="py-1.5 px-2 text-center font-mono">{d.genera_descuento ? '✓' : '—'}</td>
                         <td className="py-1.5 px-2 text-gray-600 truncate max-w-[120px]" title={d.observaciones ?? ''}>{d.observaciones ?? '—'}</td>
                       </tr>
