@@ -131,10 +131,13 @@ export default function TardanzasPanel() {
       count6ta.set(r.id_agente, (count6ta.get(r.id_agente) ?? 0) + 1);
     }
 
-    const lastImprevisto = new Map<number, number>();
+    const lastImprevisto = new Map<number, { mes: number; fecha: string }>();
     for (const r of (inasImpRes.data ?? []) as Array<{ id_agente: number; fecha_inasistencia: string }>) {
-      const mes = new Date(r.fecha_inasistencia + 'T00:00:00').getMonth() + 1;
-      lastImprevisto.set(r.id_agente, mes);
+      const prev = lastImprevisto.get(r.id_agente);
+      if (!prev || r.fecha_inasistencia > prev.fecha) {
+        const mes = new Date(r.fecha_inasistencia + 'T00:00:00').getMonth() + 1;
+        lastImprevisto.set(r.id_agente, { mes, fecha: r.fecha_inasistencia });
+      }
     }
 
     const map = new Map<number, TardanzaResumen>();
@@ -149,7 +152,7 @@ export default function TardanzasPanel() {
           nombre: r.datos_personales.nombre,
           total_tardanzas: 1,
           total_6ta_tardanza: count6ta.get(r.id_agente) ?? 0,
-          lastImprevistoMes: lastImprevisto.get(r.id_agente) ?? null,
+          lastImprevistoMes: lastImprevisto.get(r.id_agente)?.mes ?? null,
         });
       }
     }
@@ -167,7 +170,7 @@ export default function TardanzasPanel() {
           nombre: dp.nombre,
           total_tardanzas: 0,
           total_6ta_tardanza: count6ta.get(dp.id_agente) ?? 0,
-          lastImprevistoMes: lastImprevisto.get(dp.id_agente) ?? null,
+          lastImprevistoMes: lastImprevisto.get(dp.id_agente)?.mes ?? null,
         });
       }
     }
@@ -175,12 +178,12 @@ export default function TardanzasPanel() {
       const existing = map.get(idAgente);
       if (existing) {
         existing.total_6ta_tardanza = count;
-        if (lastImprevisto.has(idAgente)) existing.lastImprevistoMes = lastImprevisto.get(idAgente)!;
+        existing.lastImprevistoMes = lastImprevisto.get(idAgente)?.mes ?? existing.lastImprevistoMes;
       }
     }
-    for (const [idAgente, mes] of lastImprevisto) {
+    for (const [idAgente, imp] of lastImprevisto) {
       const existing = map.get(idAgente);
-      if (existing && !count6ta.has(idAgente)) existing.lastImprevistoMes = mes;
+      if (existing && !count6ta.has(idAgente)) existing.lastImprevistoMes = imp.mes;
     }
 
     setRows(
