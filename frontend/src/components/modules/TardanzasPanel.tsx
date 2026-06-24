@@ -81,7 +81,7 @@ export default function TardanzasPanel() {
     const since = `${year}-01-01`;
     const until = `${year}-12-31`;
 
-    const [latestRes, tardRes, inas6taRes, inasImpRes] = await Promise.all([
+    const [latestRes, tardRes, inasRes] = await Promise.all([
       supabase
         .from('tardanzas')
         .select('created_at')
@@ -100,17 +100,9 @@ export default function TardanzasPanel() {
         .lte('fecha', until),
       supabase
         .from('inasistencias')
-        .select('id_agente')
+        .select('id_agente, motivo, fecha_inasistencia, "6ta_tardanza"')
         .gte('fecha_inasistencia', since)
-        .lte('fecha_inasistencia', until)
-        .eq('6ta_tardanza', true),
-      supabase
-        .from('inasistencias')
-        .select('id_agente, fecha_inasistencia')
-        .gte('fecha_inasistencia', since)
-        .lte('fecha_inasistencia', until)
-        .eq('motivo', 'IMPREVISTO')
-        .order('fecha_inasistencia', { ascending: true }),
+        .lte('fecha_inasistencia', until),
     ]);
 
     if (tardRes.error) {
@@ -119,8 +111,8 @@ export default function TardanzasPanel() {
       setLoading(false);
       return;
     }
-    if (inasImpRes.error) {
-      setError('Error al cargar imprevistos: ' + inasImpRes.error.message);
+    if (inasRes.error) {
+      setError('Error al cargar inasistencias: ' + inasRes.error.message);
       setRows([]);
       setLoading(false);
       return;
@@ -134,16 +126,17 @@ export default function TardanzasPanel() {
     }>;
 
     const count6ta = new Map<number, number>();
-    for (const r of (inas6taRes.data ?? []) as Array<{ id_agente: number }>) {
-      count6ta.set(r.id_agente, (count6ta.get(r.id_agente) ?? 0) + 1);
-    }
-
     const lastImprevisto = new Map<number, { mes: number; fecha: string }>();
-    for (const r of (inasImpRes.data ?? []) as Array<{ id_agente: number; fecha_inasistencia: string }>) {
-      const prev = lastImprevisto.get(r.id_agente);
-      if (!prev || r.fecha_inasistencia > prev.fecha) {
-        const mes = new Date(r.fecha_inasistencia + 'T00:00:00').getMonth() + 1;
-        lastImprevisto.set(r.id_agente, { mes, fecha: r.fecha_inasistencia });
+    for (const r of (inasRes.data ?? []) as Array<{ id_agente: number; motivo: string; fecha_inasistencia: string; "6ta_tardanza": boolean }>) {
+      if (r["6ta_tardanza"]) {
+        count6ta.set(r.id_agente, (count6ta.get(r.id_agente) ?? 0) + 1);
+      }
+      if (r.motivo?.toUpperCase() === 'IMPREVISTO') {
+        const prev = lastImprevisto.get(r.id_agente);
+        if (!prev || r.fecha_inasistencia > prev.fecha) {
+          const mes = new Date(r.fecha_inasistencia + 'T00:00:00').getMonth() + 1;
+          lastImprevisto.set(r.id_agente, { mes, fecha: r.fecha_inasistencia });
+        }
       }
     }
 

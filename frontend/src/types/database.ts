@@ -260,8 +260,10 @@ export interface CertificadoServicioView {
   fecha_inasistencia: string;
   motivo_inasistencia: string;
   horas_descontar: number | null;
-  cuerpo_texto: string | null;
+  mes_informado: number | null;
+  estado: string | null;
   created_at: string | null;
+  updated_at: string | null;
   horas_convocatoria: number;
 }
 
