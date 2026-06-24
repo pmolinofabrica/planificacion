@@ -109,11 +109,18 @@ export default function TardanzasPanel() {
         .select('id_agente, fecha_inasistencia')
         .gte('fecha_inasistencia', since)
         .lte('fecha_inasistencia', until)
-        .eq('motivo', 'IMPREVISTO'),
+        .eq('motivo', 'IMPREVISTO')
+        .order('fecha_inasistencia', { ascending: true }),
     ]);
 
     if (tardRes.error) {
       setError('Error al cargar tardanzas: ' + tardRes.error.message);
+      setRows([]);
+      setLoading(false);
+      return;
+    }
+    if (inasImpRes.error) {
+      setError('Error al cargar imprevistos: ' + inasImpRes.error.message);
       setRows([]);
       setLoading(false);
       return;
@@ -181,9 +188,32 @@ export default function TardanzasPanel() {
         existing.lastImprevistoMes = lastImprevisto.get(idAgente)?.mes ?? existing.lastImprevistoMes;
       }
     }
+    const missingImprevistoIds = new Set<number>();
     for (const [idAgente, imp] of lastImprevisto) {
       const existing = map.get(idAgente);
-      if (existing && !count6ta.has(idAgente)) existing.lastImprevistoMes = imp.mes;
+      if (existing && !count6ta.has(idAgente)) {
+        existing.lastImprevistoMes = imp.mes;
+      } else if (!existing) {
+        missingImprevistoIds.add(idAgente);
+      }
+    }
+    if (missingImprevistoIds.size > 0) {
+      const { data: dps } = await supabase
+        .from('datos_personales')
+        .select('id_agente, apellido, nombre')
+        .in('id_agente', [...missingImprevistoIds]);
+      for (const dp of (dps ?? [])) {
+        if (!map.has(dp.id_agente)) {
+          map.set(dp.id_agente, {
+            id_agente: dp.id_agente,
+            apellido: dp.apellido,
+            nombre: dp.nombre,
+            total_tardanzas: 0,
+            total_6ta_tardanza: 0,
+            lastImprevistoMes: lastImprevisto.get(dp.id_agente)?.mes ?? null,
+          });
+        }
+      }
     }
 
     setRows(
