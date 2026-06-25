@@ -97,7 +97,7 @@ function MesCell({ row, table }: { row: Row<TrackedRow<CertServDraft>>; table: T
         min={1}
         max={12}
         value={value ?? ''}
-        onChange={e => setEditing(false) || meta.updateCell(row.original._id, 'mes_informado', e.target.value)}
+        onChange={e => { setEditing(false); meta.updateCell(row.original._id, 'mes_informado', e.target.value); }}
         onBlur={() => setEditing(false)}
         className="border rounded px-1 py-0.5 text-xs w-16 text-center"
       />

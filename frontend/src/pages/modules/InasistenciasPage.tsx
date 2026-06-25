@@ -51,8 +51,8 @@ export default function InasistenciasPage() {
       .eq('activo', true)
       .eq('cohorte', currentYear)
       .order('apellido')
-      .then(({ data: agents }) => {
-        setAgentOptions((agents ?? []) as AgentOption[]);
+      .then(({ data: agents }: { data: AgentOption[] | null }) => {
+        setAgentOptions(agents ?? []);
       });
   }, []);
 

@@ -28,6 +28,7 @@ type InasistenciaPopup = {
   "6ta_tardanza": boolean | null;
   requiere_certificado: boolean | null;
   observaciones: string | null;
+  datos_personales: { apellido: string; nombre: string };
 };
 
 const MONTH_NAMES = ['', 'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
