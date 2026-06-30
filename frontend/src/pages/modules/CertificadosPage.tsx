@@ -9,12 +9,12 @@ import CertificadosPanel, { CERTIFICADOS_CHANGED_EVENT } from '../../components/
 type CertificadoDraft = Omit<CertificadoView, 'id_certificado'> & { id_certificado?: number };
 
 const columns: ColumnDef<TrackedRow<CertificadoDraft>>[] = [
-  { id: 'id_certificado', header: 'ID', cell: ({ row }) => <span className="text-gray-400 text-xs">{row.original.data.id_certificado ?? '—'}</span>, size: 50 },
+  { id: 'id_certificado', accessorFn: row => row.data.id_certificado, header: 'ID', cell: ({ row }) => <span className="text-gray-400 text-xs">{row.original.data.id_certificado ?? '—'}</span>, size: 50 },
   editableColumn<CertificadoDraft>('id_inasistencia', 'ID Inasistencia', 'number'),
   editableColumn<CertificadoDraft>('id_agente', 'ID Agente', 'number'),
-  { id: 'agente', header: 'Agente', cell: ({ row }) => row.original.data.agente || '—' },
+  { id: 'agente', accessorFn: row => row.data.agente, header: 'Agente', cell: ({ row }) => <span className="text-xs">{row.original.data.agente || '—'}</span> },
   editableColumn<CertificadoDraft>('fecha_inasistencia_justifica', 'Fecha Justificada', 'date'),
-  { id: 'fecha_carga', header: 'Carga', cell: ({ row }) => row.original.data.fecha_carga || '—' },
+  { id: 'fecha_carga', accessorFn: row => row.data.fecha_carga, header: 'Carga', cell: ({ row }) => <span className="text-xs">{row.original.data.fecha_carga || '—'}</span> },
   editableColumn<CertificadoDraft>('observaciones', 'Observaciones'),
 ];
 

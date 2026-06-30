@@ -49,8 +49,8 @@ const ESTADO_OPTIONS = [
 
 function mesBg(mes: number | null): string {
   if (mes == null) return '';
-  const hue = Math.round(240 - (mes - 1) * (240 / 11));
-  return `hsl(${hue}, 55%, 82%)`;
+  const hues = [230, 200, 170, 140, 105, 330, 300, 10, 350, 30, 55, 80];
+  return `hsl(${hues[mes - 1]}, 55%, 82%)`;
 }
 
 function EstadoCell({ row, table }: { row: Row<TrackedRow<CertServDraft>>; table: Table<TrackedRow<CertServDraft>> }) {
@@ -347,7 +347,7 @@ export default function CertServPage() {
       },
       size: 180,
     },
-    { id: 'agente', header: 'Nombre', cell: ({ row }) => {
+    { id: 'agente', accessorFn: row => row.data.agente, header: 'Nombre', cell: ({ row }) => {
       const d = row.original.data;
       const isDup = d.mes_informado != null && duplicateGroups.has(`${d.id_agente}_${d.mes_informado}`);
       return <span className={`text-xs ${isDup ? 'font-bold' : 'font-medium'}`}>{d.agente || '—'}</span>;
@@ -355,14 +355,14 @@ export default function CertServPage() {
     { id: 'dni', accessorFn: row => row.data.dni, header: 'DNI', cell: ({ row }) => <span className="text-xs font-mono">{row.original.data.dni || '—'}</span> },
     editableColumn<CertServDraft>('id_inasistencia', 'Inasistencia', 'select', idInasistenciaOptions),
     { id: 'fecha_inasistencia', accessorFn: row => row.data.fecha_inasistencia, header: 'Fecha Inas.', cell: ({ row }) => <span className="text-gray-600 text-xs">{row.original.data.fecha_inasistencia || '—'}</span> },
-    { id: 'horas_convocatoria', header: 'Hs. Conv.', cell: ({ row }) => <span className="font-mono text-xs">{row.original.data.horas_convocatoria ?? '—'}</span> },
-    { id: 'horas_descontar', header: 'Hs. Descontar', cell: ({ row, table }) => {
+    { id: 'horas_convocatoria', accessorFn: row => row.data.horas_convocatoria, header: 'Hs. Conv.', cell: ({ row }) => <span className="font-mono text-xs">{row.original.data.horas_convocatoria ?? '—'}</span> },
+    { id: 'horas_descontar', accessorFn: row => row.data.horas_descontar, header: 'Hs. Descontar', cell: ({ row, table }) => {
       const d = row.original.data;
       const isDup = d.mes_informado != null && duplicateGroups.has(`${d.id_agente}_${d.mes_informado}`);
       return <HorasCell row={row} table={table} isDup={isDup} />;
     } },
-    { id: 'mes_informado', header: 'Mes', cell: ({ row, table }) => <MesCell row={row} table={table} /> },
-    { id: 'estado', header: 'Estado', cell: ({ row, table }) => <EstadoCell row={row} table={table} /> },
+    { id: 'mes_informado', accessorFn: row => row.data.mes_informado, header: 'Mes', cell: ({ row, table }) => <MesCell row={row} table={table} /> },
+    { id: 'estado', accessorFn: row => row.data.estado, header: 'Estado', cell: ({ row, table }) => <EstadoCell row={row} table={table} /> },
     { id: 'created_at', accessorFn: row => row.data.created_at, header: 'Creado', cell: ({ row }) => <span className="text-gray-500 text-xs">{row.original.data.created_at || '—'}</span> },
     { id: 'motivo_inasistencia', accessorFn: row => row.data.motivo_inasistencia, header: 'Motivo', cell: ({ row }) => <span className="text-xs">{row.original.data.motivo_inasistencia || '—'}</span> },
   ], [agentesOptions, agentesFull, idInasistenciaOptions, openPopup, duplicateGroups]);

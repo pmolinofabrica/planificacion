@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
 
 type InasistenciaRaw = {
@@ -54,6 +54,16 @@ export default function InasistenciasPanel() {
   const [globalJustificadas, setGlobalJustificadas] = useState(0);
   const [globalInjustificadas, setGlobalInjustificadas] = useState(0);
   const [global6ta, setGlobal6ta] = useState(0);
+
+  const motivoTotals = useMemo(() => {
+    const totals: Record<string, number> = {};
+    for (const r of rows) {
+      for (const [motivo, count] of Object.entries(r.motivos)) {
+        totals[motivo] = (totals[motivo] ?? 0) + count;
+      }
+    }
+    return totals;
+  }, [rows]);
 
   const todayIso = () => new Date().toISOString().split('T')[0];
   const [selectedDate, setSelectedDate] = useState(todayIso());
@@ -316,10 +326,10 @@ export default function InasistenciasPanel() {
             <thead className="sticky top-0 bg-surface-container-lowest/90 backdrop-blur-sm z-10">
               <tr className="border-b border-outline-variant/20">
                 <th className="py-2 px-2 font-semibold text-on-surface-variant min-w-[160px]">Residente</th>
-                <th className="py-2 px-2 font-semibold text-on-surface-variant text-center min-w-[72px]">Justificadas</th>
-                <th className="py-2 px-2 font-semibold text-on-surface-variant text-center min-w-[72px]">Injustificadas</th>
+                <th className="py-2 px-2 font-semibold text-on-surface-variant text-center min-w-[72px]">Justificadas ({globalJustificadas})</th>
+                <th className="py-2 px-2 font-semibold text-on-surface-variant text-center min-w-[72px]">Injustificadas ({globalInjustificadas})</th>
                 {allMotivos.flatMap((m) => {
-                  const cols = [<th key={m} className="py-2 px-2 font-semibold text-on-surface-variant text-center min-w-[72px]">{m}</th>];
+                  const cols = [<th key={m} className="py-2 px-2 font-semibold text-on-surface-variant text-center min-w-[72px]">{m} ({motivoTotals[m] ?? 0})</th>];
                   if (m === 'IMPREVISTO') {
                     cols.push(
                       <th key="mes-imp" className="py-2 px-2 font-semibold text-on-surface-variant text-center min-w-[60px]">Mes Imp</th>
@@ -327,7 +337,7 @@ export default function InasistenciasPanel() {
                   }
                   return cols;
                 })}
-                <th className="py-2 px-2 font-semibold text-on-surface-variant text-center min-w-[60px]">6ta T.</th>
+                <th className="py-2 px-2 font-semibold text-on-surface-variant text-center min-w-[60px]">6ta T. ({global6ta})</th>
               </tr>
             </thead>
             <tbody>
