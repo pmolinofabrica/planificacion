@@ -131,7 +131,9 @@ const TABLE_CONFIG = {
       id_agente: 'int',
       mes: 'int',
       anio: 'int',
-      horas_mes: 'float'
+      horas_mes: 'float',
+      horas_convocadas: 'float',
+      horas_canceladas: 'float'
     }
   },
 

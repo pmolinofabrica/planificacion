@@ -1,7 +1,17 @@
+-- CORREGIDO: Incluye horas_convocadas y horas_canceladas
 -- Corrige el RPC de saldos para que opere solo sobre la cohorte del anio solicitado,
 -- use las horas reales de planificacion y no pierda overrides de convocatoria.
 -- Ademas corrige la vista mensual para clasificar manana, tarde y Apertura al publico
 -- usando prefijos y unificando todos los turnos que empiecen con "Apertura al público".
+--
+-- 2026-07-01: Agregado horas_convocadas (todas), horas_canceladas (solo canceladas),
+--             horas_mes se mantiene como horas reales (no canceladas).
+
+-- ===== ACTUALIZADO 2026-07-01: agrega horas_convocadas y horas_canceladas =====
+
+ALTER TABLE saldos
+  ADD COLUMN IF NOT EXISTS horas_convocadas NUMERIC DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS horas_canceladas NUMERIC DEFAULT 0;
 
 CREATE OR REPLACE FUNCTION public.rpc_calcular_saldos_mes(p_anio integer, p_mes integer)
  RETURNS void
@@ -23,7 +33,15 @@ BEGIN
     WITH horas_calculadas AS (
         SELECT
             c.id_agente,
-            SUM(COALESCE(p.cant_horas, t.cant_horas, 0)) AS total_horas_mes
+            SUM(COALESCE(p.cant_horas, t.cant_horas, 0))
+                FILTER (WHERE c.estado IN ('vigente', 'cumplida'))
+                AS total_horas_mes,
+            SUM(COALESCE(p.cant_horas, t.cant_horas, 0))
+                FILTER (WHERE c.estado IN ('vigente', 'cumplida') AND COALESCE(c.turno_cancelado, false) = false)
+                AS horas_reales_mes,
+            SUM(COALESCE(p.cant_horas, t.cant_horas, 0))
+                FILTER (WHERE c.estado = 'cancelada' OR COALESCE(c.turno_cancelado, false) = true)
+                AS horas_canceladas_mes
         FROM convocatoria c
         JOIN planificacion p ON c.id_plani = p.id_plani
         JOIN dias d ON p.id_dia = d.id_dia
@@ -31,8 +49,6 @@ BEGIN
         JOIN datos_personales dp ON c.id_agente = dp.id_agente
         WHERE d.anio = p_anio
           AND d.mes = p_mes
-          AND c.estado IN ('vigente', 'cumplida')
-          AND COALESCE(c.turno_cancelado, false) = false
           AND dp.activo = true
           AND dp.cohorte = p_anio
           AND (t.tipo_turno IS NULL OR LOWER(t.tipo_turno) <> 'descanso')
@@ -40,13 +56,16 @@ BEGIN
     )
     INSERT INTO saldos (
         id_agente, mes, anio, horas_mes,
+        horas_convocadas, horas_canceladas,
         objetivo_mensual_48, objetivo_mensual_12w, fecha_actualizacion
     )
     SELECT
         dp.id_agente,
         p_mes,
         p_anio,
+        COALESCE(hc.horas_reales_mes, 0),
         COALESCE(hc.total_horas_mes, 0),
+        COALESCE(hc.horas_canceladas_mes, 0),
         48.0,
         (12.0 * v_semanas_mes),
         CURRENT_TIMESTAMP
@@ -56,12 +75,19 @@ BEGIN
       AND dp.cohorte = p_anio
     ON CONFLICT (id_agente, mes, anio) DO UPDATE SET
         horas_mes = EXCLUDED.horas_mes,
+        horas_convocadas = EXCLUDED.horas_convocadas,
+        horas_canceladas = EXCLUDED.horas_canceladas,
         objetivo_mensual_48 = EXCLUDED.objetivo_mensual_48,
         objetivo_mensual_12w = EXCLUDED.objetivo_mensual_12w,
         fecha_actualizacion = EXCLUDED.fecha_actualizacion;
 
     WITH acumulado_anual AS (
-        SELECT id_agente, SUM(horas_mes) AS t_horas, SUM(objetivo_mensual_48) AS t_o48, SUM(objetivo_mensual_12w) AS t_o12w
+        SELECT id_agente,
+               SUM(horas_mes) AS t_horas,
+               SUM(horas_convocadas) AS t_convocadas,
+               SUM(horas_canceladas) AS t_canceladas,
+               SUM(objetivo_mensual_48) AS t_o48,
+               SUM(objetivo_mensual_12w) AS t_o12w
         FROM saldos
         WHERE anio = p_anio AND mes <= p_mes
         GROUP BY id_agente
@@ -91,8 +117,8 @@ WITH horas_desglosadas AS (
             CASE
                 WHEN d.numero_dia_semana <> ALL (ARRAY[0, 6])
                   AND (
-                    t.tipo_turno ILIKE 'mañana%'
-                    OR t.tipo_turno ILIKE 'manana%'
+                    t.tipo_turno ILIKE '%mañana%'
+                    OR t.tipo_turno ILIKE '%manana%'
                   )
                 THEN COALESCE(p.cant_horas, t.cant_horas, 0)
                 ELSE 0
@@ -101,7 +127,7 @@ WITH horas_desglosadas AS (
         SUM(
             CASE
                 WHEN d.numero_dia_semana <> ALL (ARRAY[0, 6])
-                  AND t.tipo_turno ILIKE 'tarde%'
+                  AND t.tipo_turno ILIKE '%tarde%'
                 THEN COALESCE(p.cant_horas, t.cant_horas, 0)
                 ELSE 0
             END
@@ -128,9 +154,9 @@ WITH horas_desglosadas AS (
             CASE
                 WHEN d.numero_dia_semana <> ALL (ARRAY[0, 6])
                   AND NOT (
-                    t.tipo_turno ILIKE 'mañana%'
-                    OR t.tipo_turno ILIKE 'manana%'
-                    OR t.tipo_turno ILIKE 'tarde%'
+                    t.tipo_turno ILIKE '%mañana%'
+                    OR t.tipo_turno ILIKE '%manana%'
+                    OR t.tipo_turno ILIKE '%tarde%'
                     OR t.tipo_turno ILIKE 'Apertura al público%'
                     OR t.tipo_turno ILIKE 'Apertura al publico%'
                   )
@@ -154,6 +180,8 @@ SELECT
     ((dp.apellido)::text || ', '::text) || (dp.nombre)::text AS residente,
     dp.dni,
     s.horas_mes AS total_horas_convocadas,
+    s.horas_convocadas,
+    s.horas_canceladas,
     s.objetivo_mensual_48,
     s.objetivo_mensual_12w,
     (s.horas_mes - s.objetivo_mensual_48) AS diferencia_saldo_48,

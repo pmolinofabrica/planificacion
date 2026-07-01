@@ -12,6 +12,8 @@ interface HistorialMes {
   horasObjetivoAcumuladas: number;
   saldoMensual: number;
   saldoAcumulado: number;
+  horasConvocadas: number;
+  horasCanceladas: number;
 }
 
 interface HistorialRow {
@@ -75,9 +77,14 @@ const getProratedObjective = (
   const residentStart = resident.fecha_alta ? startOfDay(resident.fecha_alta) : null;
   const residentEnd = resident.fecha_baja ? startOfDay(resident.fecha_baja) : null;
 
+  const isFirstCohortMonth =
+    cohortStart &&
+    cohortStart.getFullYear() === year &&
+    cohortStart.getMonth() === month - 1;
+
   const effectiveStartCandidates = [monthStart];
   if (cohortStart) effectiveStartCandidates.push(cohortStart);
-  if (residentStart) effectiveStartCandidates.push(residentStart);
+  if (residentStart && !isFirstCohortMonth) effectiveStartCandidates.push(residentStart);
 
   const effectiveEndCandidates = [monthEnd];
   if (cohortEnd) effectiveEndCandidates.push(cohortEnd);
@@ -118,6 +125,9 @@ const buildHistorialRows = (
       cumulativeCompleted += monthlyCompleted;
       cumulativeObjective += monthlyObjective;
 
+      const convocadas = row?.horas_convocadas ?? 0;
+      const canceladas = row?.horas_canceladas ?? 0;
+
       meses.push({
         mes: month,
         horasCumplidas: monthlyCompleted,
@@ -126,6 +136,8 @@ const buildHistorialRows = (
         horasObjetivoAcumuladas: Number(cumulativeObjective.toFixed(1)),
         saldoMensual: Number((monthlyCompleted - monthlyObjective).toFixed(1)),
         saldoAcumulado: Number((cumulativeCompleted - cumulativeObjective).toFixed(1)),
+        horasConvocadas: convocadas,
+        horasCanceladas: canceladas,
       });
     }
 
@@ -214,8 +226,7 @@ export default function SaldosPage() {
         .from('config_cohorte')
         .select('fecha_inicio, fecha_fin')
         .eq('anio', anio)
-        .eq('activo', true)
-        .limit(1),
+        .maybeSingle(),
     ]);
 
     if (saldosError || cohortError || configError) {
@@ -241,7 +252,7 @@ export default function SaldosPage() {
       fecha_baja: row.fecha_baja,
     }));
 
-    const cohortConfig = (((cohortConfigRows as CohortConfig[]) ?? [])[0]) ?? null;
+    const cohortConfig = (cohortConfigRows as CohortConfig) ?? null;
     const cohortIds = new Set(residents.map((row) => row.id_agente));
 
     const filteredRows = ((rows as SaldoDashboardView[]) ?? []).filter((row) => cohortIds.has(row.id_agente));
@@ -425,15 +436,20 @@ export default function SaldosPage() {
                           title={`Mes ${monthData.mes}: cumplidas ${formatHours(monthData.horasCumplidasAcumuladas)}, objetivo ${formatHours(monthData.horasObjetivoAcumuladas)}, saldo ${formatHours(monthData.saldoAcumulado)}`}
                         >
                           <div className="grid gap-2">
+                            <div className="rounded-lg border border-violet-200 bg-violet-50 px-2 py-2 text-violet-800">
+                              <div className="text-[10px] uppercase tracking-wider opacity-75">Convocadas</div>
+                              <div className="text-base font-bold">{formatHours(monthData.horasConvocadas)}</div>
+                              <div className="text-[11px] opacity-80">Canceladas: {formatHours(monthData.horasCanceladas)}</div>
+                            </div>
                             <div className="rounded-lg border border-sky-200 bg-sky-50 px-2 py-2 text-sky-800">
-                              <div className="text-[10px] uppercase tracking-wider opacity-75">Cumplidas</div>
-                              <div className="text-base font-bold">{formatHours(monthData.horasCumplidasAcumuladas)}</div>
-                              <div className="text-[11px] opacity-80">Mes: {formatHours(monthData.horasCumplidas)}</div>
+                              <div className="text-[10px] uppercase tracking-wider opacity-75">Reales</div>
+                              <div className="text-base font-bold">{formatHours(monthData.horasCumplidas)}</div>
+                              <div className="text-[11px] opacity-80">Acum: {formatHours(monthData.horasCumplidasAcumuladas)}</div>
                             </div>
                             <div className="rounded-lg border border-amber-200 bg-amber-50 px-2 py-2 text-amber-900">
                               <div className="text-[10px] uppercase tracking-wider opacity-75">A cumplir</div>
-                              <div className="text-base font-semibold">{formatHours(monthData.horasObjetivoAcumuladas)}</div>
-                              <div className="text-[11px] opacity-80">Mes: {formatHours(monthData.horasObjetivoMes)}</div>
+                              <div className="text-base font-semibold">{formatHours(monthData.horasObjetivoMes)}</div>
+                              <div className="text-[11px] opacity-80">Acum: {formatHours(monthData.horasObjetivoAcumuladas)}</div>
                             </div>
                             <div className={`rounded-lg border px-2 py-2 ${getSaldoClasses(monthData.saldoAcumulado)}`}>
                               <div className="text-[10px] uppercase tracking-wider opacity-75">Saldo (dif.)</div>
@@ -477,7 +493,9 @@ export default function SaldosPage() {
             <thead className="bg-gray-100 text-gray-700">
               <tr>
                 <th className="px-4 py-3 font-semibold border-b">Residente</th>
-                <th className="px-4 py-3 font-semibold border-b text-center" title="Horas por cronograma planificado">Total Hs</th>
+                <th className="px-4 py-3 font-semibold border-b text-center" title="Total de horas convocadas (incluye canceladas)">Hs Conv.</th>
+                <th className="px-4 py-3 font-semibold border-b text-center" title="Horas canceladas">Hs Canc.</th>
+                <th className="px-4 py-3 font-semibold border-b text-center" title="Horas reales (convocadas - canceladas)">Hs Real</th>
                 <th className="px-4 py-3 font-semibold border-b text-center text-blue-800 bg-blue-50" title="Objetivo local">Obj. Mensual 48h</th>
                 <th className="px-4 py-3 font-semibold border-b text-center text-blue-800 bg-blue-50">Dif. 48h</th>
                 <th className="px-4 py-3 font-semibold border-b text-center text-purple-800 bg-purple-50">Obj. Mensual 12</th>
@@ -495,7 +513,9 @@ export default function SaldosPage() {
                   <td className="px-4 py-2 font-medium">
                     {row.residente} <span className="text-gray-400 font-normal">({row.dni})</span>
                   </td>
-                  <td className="px-4 py-2 text-center text-gray-600 font-medium">{row.total_horas_convocadas}</td>
+                  <td className="px-4 py-2 text-center text-gray-600">{formatHours(row.horas_convocadas)}</td>
+                  <td className="px-4 py-2 text-center text-red-600">{formatHours(row.horas_canceladas)}</td>
+                  <td className="px-4 py-2 text-center text-gray-600 font-medium">{formatHours(row.total_horas_convocadas)}</td>
                   <td className="px-4 py-2 text-center font-bold bg-blue-50 text-blue-700">{formatHours(row.objetivo_mensual_48_ajustado)}</td>
                   <td className={`px-4 py-2 text-center font-bold ${row.diferencia_saldo_48_ajustada < 0 ? 'text-red-500' : 'text-green-600'}`}>
                     {row.diferencia_saldo_48_ajustada > 0 ? '+' : ''}
@@ -515,7 +535,7 @@ export default function SaldosPage() {
               ))}
               {data.length === 0 && (
                 <tr>
-                  <td colSpan={11} className="px-4 py-8 text-center text-gray-500 italic">
+                  <td colSpan={13} className="px-4 py-8 text-center text-gray-500 italic">
                     No hay saldos calculados para este mes. Presiona Recalcular.
                   </td>
                 </tr>

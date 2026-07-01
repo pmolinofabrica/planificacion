@@ -57,9 +57,14 @@ const getProratedObjective = (
   const residentStart = resident.fecha_alta ? startOfDay(resident.fecha_alta) : null;
   const residentEnd = resident.fecha_baja ? startOfDay(resident.fecha_baja) : null;
 
+  const isFirstCohortMonth =
+    cohortStart &&
+    cohortStart.getFullYear() === year &&
+    cohortStart.getMonth() === month - 1;
+
   const effectiveStartCandidates = [monthStart];
   if (cohortStart) effectiveStartCandidates.push(cohortStart);
-  if (residentStart) effectiveStartCandidates.push(residentStart);
+  if (residentStart && !isFirstCohortMonth) effectiveStartCandidates.push(residentStart);
 
   const effectiveEndCandidates = [monthEnd];
   if (cohortEnd) effectiveEndCandidates.push(cohortEnd);

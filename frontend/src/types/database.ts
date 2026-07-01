@@ -237,6 +237,8 @@ export interface SaldoDashboardView {
   residente: string;
   dni: string;
   total_horas_convocadas: number;
+  horas_convocadas: number;
+  horas_canceladas: number;
   objetivo_mensual_48: number;
   objetivo_mensual_12w: number;
   diferencia_saldo_48: number;
