@@ -130,8 +130,7 @@ export default function InasistenciasPage() {
       fecha_inasistencia: i.fecha_inasistencia,
       fecha_aviso: i.fecha_aviso || null,
       motivo: i.motivo,
-      estado: i.estado,
-      requiere_certificado: i.requiere_certificado,
+      requiere_certificado: null,
       "6ta_tardanza": i["6ta_tardanza"],
       observaciones: i.observaciones
     }));
