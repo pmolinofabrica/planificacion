@@ -124,7 +124,7 @@ export default function TableroPage() {
             items={filteredItems}
             comentarios={comentarios}
             currentUser={currentUser}
-            onUpdateEstado={updateEstado}
+            onUpdateEstado={async (id, estado) => { await updateEstado(id, estado); }}
             onAddComment={async (itemId, contenido) => {
               if (!currentUser) return;
               await agregarComentario(itemId, currentUser, contenido);
