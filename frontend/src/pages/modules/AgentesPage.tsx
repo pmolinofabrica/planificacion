@@ -12,9 +12,8 @@ const columns: ColumnDef<TrackedRow<AgenteDraft>>[] = [
   editableColumn<AgenteDraft>('nombre', 'Nombre'),
   editableColumn<AgenteDraft>('apellido', 'Apellido'),
   editableColumn<AgenteDraft>('dni', 'DNI'),
-  editableColumn<AgenteDraft>('hs_semana_actual', 'Hs/Semana', 'number'),
-  editableColumn<AgenteDraft>('anio_residencia', 'Anio Res.'),
-  editableColumn<AgenteDraft>('hospital_referencia', 'Hosp. Ref.'),
+  editableColumn<AgenteDraft>('email', 'Email'),
+  editableColumn<AgenteDraft>('telefono', 'Teléfono'),
   editableColumn<AgenteDraft>('cohorte', 'Cohorte', 'number'),
   editableColumn<AgenteDraft>('grupo_capacitacion', 'Grupo', 'select', [
     { value: 'A', label: 'Grupo A' },
@@ -26,9 +25,8 @@ const newAgenteTemplate: AgenteDraft = {
   nombre: '',
   apellido: '',
   dni: '',
-  hs_semana_actual: 48,
-  anio_residencia: '1',
-  hospital_referencia: '',
+  email: null,
+  telefono: null,
   cohorte: new Date().getFullYear(),
   grupo_capacitacion: null,
 };
@@ -67,7 +65,7 @@ export default function AgentesPage() {
 
   return (
     <div>
-      <div className="mb-4"><h2 className="text-xl font-bold text-gray-800">Agentes</h2></div>
+      <div className="mb-4"><h2 className="text-xl font-bold text-gray-800">DATOS PERSONALES</h2></div>
       {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">{error}</div>}
       <DataTable<AgenteDraft>
         key={refreshKey}

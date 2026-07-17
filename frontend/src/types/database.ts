@@ -122,10 +122,9 @@ export interface Agente {
   nombre: string
   apellido: string
   dni: string
-  hs_semana_actual: number
-  anio_residencia: string
-  hospital_referencia: string
   cohorte: number
+  email: string | null
+  telefono: string | null
   grupo_capacitacion: string | null
 }
 

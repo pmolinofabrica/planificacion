@@ -83,7 +83,7 @@ BEGIN
       EXTRACT(MONTH FROM NEW.fecha_inasistencia),
       'pendiente'
     )
-    ON CONFLICT DO NOTHING;
+    ON CONFLICT (id_agente, id_inasistencia) DO NOTHING;
   END IF;
 
   RETURN NEW;

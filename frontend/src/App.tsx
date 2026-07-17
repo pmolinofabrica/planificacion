@@ -1,8 +1,11 @@
-import { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, NavLink } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, NavLink, useNavigate } from 'react-router-dom';
+import { ClipboardList, MessageSquarePlus, Eye, LogOut } from 'lucide-react';
 import { useAuth } from './hooks/useAuth';
+import { useTablero } from './hooks/useTablero';
 import Login from './pages/auth/Login';
 import PrivateRoute from './components/PrivateRoute';
+import TableroPage from './pages/TableroPage';
 import TurnosPage from './pages/modules/TurnosPage';
 import ConvocatoriasPage from './pages/modules/ConvocatoriasPage';
 import AgentesPage from './pages/modules/AgentesPage';
@@ -20,6 +23,10 @@ import ModuleDrawer from './components/layout/ModuleDrawer';
 import CertificadosPanel from './components/modules/CertificadosPanel';
 import TardanzasPanel from './components/modules/TardanzasPanel';
 import InasistenciasPanel from './components/modules/InasistenciasPanel';
+import { NuevaTarjetaDialog } from './components/tablero/NuevaTarjetaDialog';
+import { UserSelector } from './components/tablero/UserSelector';
+import { STORAGE_USER_KEY } from './types/tablero';
+import type { TableroUser } from './types/tablero';
 import { supabase } from './lib/supabase';
 
 type SimpleTab = 'certificados' | 'tardanzas' | 'inasistencias';
@@ -49,7 +56,7 @@ const NAV_GROUPS = [
   [
     { path: '/dispositivos', label: 'Dispositivos' },
     { path: '/turnos', label: 'Turnos' },
-    { path: '/agentes', label: 'Agentes' },
+    { path: '/agentes', label: 'DATOS PERSONALES' },
   ],
 ];
 
@@ -76,6 +83,26 @@ function Layout({ children }: { children: React.ReactNode }) {
   const [openModule, setOpenModule] = useState<ModuleId | null>(null);
   const [simpleMode, setSimpleMode] = useState(false);
   const [activeSimpleTab, setActiveSimpleTab] = useState<SimpleTab>('certificados');
+  const [nuevaTarjetaOpen, setNuevaTarjetaOpen] = useState(false);
+  const [tableroUser, setTableroUser] = useState<TableroUser | null>(() => {
+    const saved = localStorage.getItem(STORAGE_USER_KEY) as TableroUser | null;
+    return saved && (['Pablo', 'Vane', 'Celi', 'Euge', 'Eli'] as const).includes(saved as any) ? saved : null;
+  });
+  const { crearItem } = useTablero('planificacion');
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const saved = localStorage.getItem(STORAGE_USER_KEY) as TableroUser | null;
+    if (saved && (['Pablo', 'Vane', 'Celi', 'Euge', 'Eli'] as const).includes(saved as any)) {
+      setTableroUser(saved);
+    }
+  }, [nuevaTarjetaOpen]);
+
+  const handleCrearTarjeta = async (titulo: string, descripcion: string, tipo: any, autor: any) => {
+    const { error } = await crearItem(titulo, descripcion, tipo, autor);
+    if (error) alert(`Error: ${error}`);
+    else alert('Tarjeta creada');
+  };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -107,11 +134,27 @@ function Layout({ children }: { children: React.ReactNode }) {
         >
           <span className="material-symbols-outlined">menu</span>
         </button>
-        <div className="ml-4 flex flex-col">
-          <h1 className="text-white text-lg font-black leading-tight">El Molino</h1>
-          <p className="font-headline uppercase tracking-widest text-[8px] font-bold text-slate-400">Residencias</p>
-        </div>
-      </header>
+          <div className="ml-4 flex flex-col">
+            <h1 className="text-white text-lg font-black leading-tight">El Molino</h1>
+            <p className="font-headline uppercase tracking-widest text-[8px] font-bold text-slate-400">Residencias</p>
+          </div>
+          <div className="ml-auto flex items-center gap-1">
+            <button
+              onClick={() => navigate('/tablero')}
+              className="p-1.5 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+              title="Ir al Tablero"
+            >
+              <ClipboardList className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setNuevaTarjetaOpen(true)}
+              className="p-1.5 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+              title="Nueva tarjeta"
+            >
+              <MessageSquarePlus className="w-4 h-4" />
+            </button>
+          </div>
+        </header>
 
       {/* Mobile Sidebar Overlay */}
       {isSidebarOpen && (
@@ -139,6 +182,41 @@ function Layout({ children }: { children: React.ReactNode }) {
           >
             <span className="material-symbols-outlined text-xl">close</span>
           </button>
+        </div>
+
+        <div className="px-4 mb-4">
+          <div className="flex items-center gap-1 mx-2">
+            <button
+              onClick={() => { navigate('/tablero'); closeSidebar(); }}
+              className="flex-1 flex items-center justify-center px-3 py-2.5 rounded-lg transition-all duration-200 text-slate-400 hover:text-white hover:bg-white/5 active:translate-x-0.5"
+              title="Ir al Tablero"
+            >
+              <ClipboardList className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => { setNuevaTarjetaOpen(true); closeSidebar(); }}
+              className="flex-1 flex items-center justify-center px-3 py-2.5 rounded-lg transition-all duration-200 text-slate-400 hover:text-white hover:bg-white/5 active:translate-x-0.5"
+              title="Nueva tarjeta"
+            >
+              <MessageSquarePlus className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => { setSimpleMode(!simpleMode); setOpenModule(null); setActiveSimpleTab('certificados'); closeSidebar(); }}
+              className={`flex-1 flex items-center justify-center px-3 py-2.5 rounded-lg transition-all duration-200 active:translate-x-0.5 ${
+                simpleMode ? 'text-white bg-primary/20' : 'text-slate-400 hover:text-white hover:bg-white/5'
+              }`}
+              title={simpleMode ? 'Salir Modo Simple' : 'Modo Simple'}
+            >
+              <Eye className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => { handleLogout(); closeSidebar(); }}
+              className="flex-1 flex items-center justify-center px-3 py-2.5 rounded-lg transition-all duration-200 text-slate-400 hover:text-white hover:bg-white/5 active:translate-x-0.5"
+              title="Cerrar Sesión"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {!simpleMode && (
@@ -223,26 +301,6 @@ function Layout({ children }: { children: React.ReactNode }) {
           </nav>
         )}
 
-        <div className="px-4 mt-auto">
-          <div className="border-t border-white/10 pt-4 flex flex-col gap-2">
-            <button
-              onClick={() => { setSimpleMode(!simpleMode); setOpenModule(null); setActiveSimpleTab('certificados'); }}
-              className={`w-full py-3 rounded-lg font-bold text-xs uppercase tracking-widest transition-all border ${
-                simpleMode
-                  ? 'bg-primary/20 text-white border-primary/40 hover:bg-primary/30'
-                  : 'bg-white/5 text-slate-300 border-white/5 hover:bg-white/10'
-              }`}
-            >
-              {simpleMode ? '✕ Salir Modo Simple' : '◉ Modo Simple'}
-            </button>
-            <button
-              onClick={handleLogout}
-              className="w-full bg-white/5 text-slate-300 py-3 rounded-lg font-bold text-xs uppercase tracking-widest hover:bg-error/20 hover:text-error transition-all border border-white/5"
-            >
-              Cerrar Sesión
-            </button>
-          </div>
-        </div>
       </aside>
 
       {/* Main content (scrolling area) */}
@@ -300,6 +358,15 @@ function Layout({ children }: { children: React.ReactNode }) {
       >
         <InasistenciasPanel />
       </ModuleDrawer>
+
+      <NuevaTarjetaDialog
+        key={tableroUser}
+        open={nuevaTarjetaOpen}
+        onClose={() => setNuevaTarjetaOpen(false)}
+        currentUser={tableroUser}
+        onSubmit={handleCrearTarjeta}
+        dialogTitle="Comentarios - Nueva tarjeta"
+      />
     </div>
   );
 }
@@ -309,6 +376,7 @@ function App() {
     <Router>
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/tablero" element={<TableroPage />} />
 
         <Route element={<PrivateRoute />}>
           <Route
