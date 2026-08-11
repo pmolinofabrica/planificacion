@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase';
 import DataTable, { editableColumn } from '../../components/table/DataTable';
 import type { DataTableHandle } from '../../components/table/DataTable';
 import { EditableCell } from '../../components/table/EditableCell';
+import DisponibilidadModal from '../../components/modules/DisponibilidadModal';
 import type { TrackedRow, BatchError } from '../../types/table';
 import type { ColumnDef } from '@tanstack/react-table';
 
@@ -128,6 +129,7 @@ export default function ConvocatoriasPage() {
   const [bulkPlaniId, setBulkPlaniId] = useState<number | null>(null);
   const [selectedTurnos, setSelectedTurnos] = useState<string[]>([]);
   const [showCompletar, setShowCompletar] = useState(false);
+  const [showDisponibilidad, setShowDisponibilidad] = useState(false);
   const [completarFecha, setCompletarFecha] = useState('');
   const [completarPlani, setCompletarPlani] = useState<number | null>(null);
   const [popupCell, setPopupCell] = useState<{ dayNum: string; turnoAbbr: string } | null>(null);
@@ -625,6 +627,12 @@ export default function ConvocatoriasPage() {
           >
             Completar Convocatoria
           </button>
+          <button
+            onClick={() => setShowDisponibilidad(true)}
+            className="bg-surface-container-high text-on-surface-variant px-4 py-1.5 rounded-lg text-xs font-bold font-headline uppercase tracking-wider hover:bg-surface-dim transition-all border border-outline-variant/20 active:scale-95 whitespace-nowrap"
+          >
+            Disponibilidad
+          </button>
         </div>
       </div>
 
@@ -974,6 +982,12 @@ export default function ConvocatoriasPage() {
           </div>
         </div>
       )}
+      <DisponibilidadModal
+        open={showDisponibilidad}
+        onClose={() => setShowDisponibilidad(false)}
+        agentes={agentes}
+        agentesGruposDias={agentesGruposDias}
+      />
     </div>
   );
 }
