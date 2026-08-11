@@ -8,6 +8,8 @@ import { NuevaTarjetaDialog } from './NuevaTarjetaDialog';
 
 const ICON_MAP = { Inbox, PlayCircle, MessageCircle, CheckCircle2, Archive };
 
+const isDev = (user: TableroUser | null) => user === 'Pablo';
+
 interface TarjetaDetailModalProps {
   item: TableroItem | null;
   open: boolean;
@@ -87,7 +89,7 @@ export function TarjetaDetailModal({
               <div className="grid grid-cols-5 gap-1.5">
                 {ESTADO_COLUMNS.map((col) => {
                   const active = item.estado === col.estado;
-                  const canMove = currentUser && !active;
+                  const canMove = isDev(currentUser) && !active;
                   const Icon = ICON_MAP[col.icon as keyof typeof ICON_MAP];
                   let btnClass = col.color + ' border-outline-variant/20 text-on-surface-variant/40 cursor-default';
                   if (active) {
@@ -108,6 +110,11 @@ export function TarjetaDetailModal({
                   );
                 })}
               </div>
+              {!isDev(currentUser) && (
+                <p className="text-[10px] text-on-surface-variant/70 mt-1.5 text-center">
+                  Solo Pablo puede cambiar el estado
+                </p>
+              )}
             </div>
 
             <hr className="border-outline-variant/20" />
@@ -125,6 +132,7 @@ export function TarjetaDetailModal({
 
       {item && (
         <NuevaTarjetaDialog
+          key={`${item.id}-${editOpen}`}
           open={editOpen}
           onClose={() => setEditOpen(false)}
           currentUser={currentUser}

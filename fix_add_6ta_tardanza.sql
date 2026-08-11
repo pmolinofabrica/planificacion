@@ -13,8 +13,9 @@ CREATE OR REPLACE VIEW public.vista_inasistencias_completa AS
     (EXTRACT(month FROM i.fecha_inasistencia))::integer AS mes,
     i.motivo,
     i.estado,
-    i.requiere_certificado,
-    i."6ta_tardanza",
+     i.requiere_certificado,
+     i.certificado_presentado,
+     i."6ta_tardanza",
     i.observaciones,
     i.fecha_aviso
    FROM (inasistencias i

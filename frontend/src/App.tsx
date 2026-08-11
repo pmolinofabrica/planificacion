@@ -360,7 +360,7 @@ function Layout({ children }: { children: React.ReactNode }) {
       </ModuleDrawer>
 
       <NuevaTarjetaDialog
-        key={tableroUser}
+        key={`${tableroUser}-${nuevaTarjetaOpen}`}
         open={nuevaTarjetaOpen}
         onClose={() => setNuevaTarjetaOpen(false)}
         currentUser={tableroUser}

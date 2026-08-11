@@ -44,6 +44,8 @@ export default function TableroPage() {
     if (error) alert(`Error al eliminar: ${error}`);
   };
 
+  const isDev = currentUser === 'Pablo';
+
   return (
     <div className="min-h-screen bg-surface text-on-surface font-body flex flex-col">
       <header className="bg-surface-container-low border-b border-outline-variant/20 px-4 sm:px-6 py-3 flex flex-col gap-3 sticky top-0 z-20">
@@ -105,12 +107,14 @@ export default function TableroPage() {
               {t === 'fallo' ? '🐛 Fallos' : t === 'mensaje' ? '💬 Mensajes' : '💡 Propuestas'}
             </button>
           ))}
-          <button
-            onClick={refresh}
-            className="ml-auto px-2.5 py-1 rounded-md text-[10px] font-bold font-headline border border-outline-variant/20 bg-surface-container-high text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface transition-all uppercase tracking-wider"
-          >
-            🔄 Refrescar
-          </button>
+          {isDev && (
+            <button
+              onClick={refresh}
+              className="ml-auto px-2.5 py-1 rounded-md text-[10px] font-bold font-headline border border-outline-variant/20 bg-surface-container-high text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface transition-all uppercase tracking-wider"
+            >
+              🔄 Refrescar
+            </button>
+          )}
         </div>
       </header>
 
@@ -127,7 +131,8 @@ export default function TableroPage() {
             onUpdateEstado={async (id, estado) => { await updateEstado(id, estado); }}
             onAddComment={async (itemId, contenido) => {
               if (!currentUser) return;
-              await agregarComentario(itemId, currentUser, contenido);
+              const { error } = await agregarComentario(itemId, currentUser, contenido);
+              if (error) alert(`Error al comentar: ${error}`);
             }}
             onUpdateItem={handleUpdateItem}
             onDeleteItem={handleDeleteItem}
@@ -151,7 +156,7 @@ export default function TableroPage() {
       )}
 
       <NuevaTarjetaDialog
-        key={currentUser}
+        key={`${currentUser}-${showNewDialog}`}
         open={showNewDialog}
         onClose={() => setShowNewDialog(false)}
         currentUser={currentUser}

@@ -18,7 +18,8 @@ interface TableroBoardProps {
 export function TableroBoard({
   items, comentarios, currentUser, onUpdateEstado, onAddComment, onUpdateItem, onDeleteItem, getComentariosByItem,
 }: TableroBoardProps) {
-  const [selectedItem, setSelectedItem] = useState<TableroItem | null>(null);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const selectedItem = items.find(i => i.id === selectedId) || null;
 
   const itemsByEstado = ESTADO_COLUMNS.reduce((acc, col) => {
     acc[col.estado] = items.filter(i => i.estado === col.estado);
@@ -34,7 +35,7 @@ export function TableroBoard({
             estado={col.estado}
             label={col.label}
             items={itemsByEstado[col.estado] || []}
-            onCardClick={setSelectedItem}
+            onCardClick={(item) => setSelectedId(item.id)}
           />
         ))}
       </div>
@@ -42,7 +43,7 @@ export function TableroBoard({
       <TarjetaDetailModal
         item={selectedItem}
         open={!!selectedItem}
-        onClose={() => setSelectedItem(null)}
+        onClose={() => setSelectedId(null)}
         currentUser={currentUser}
         comentarios={selectedItem ? getComentariosByItem(selectedItem.id) : []}
         onUpdateEstado={onUpdateEstado}

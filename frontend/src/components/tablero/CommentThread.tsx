@@ -14,9 +14,14 @@ export function CommentThread({ comentarios, currentUser, onAddComment }: Commen
   const handleSend = async () => {
     if (!text.trim() || !currentUser || sending) return;
     setSending(true);
-    await onAddComment(text.trim());
-    setText('');
-    setSending(false);
+    try {
+      await onAddComment(text.trim());
+      setText('');
+    } catch {
+      // deja el texto para que el usuario reintente
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
