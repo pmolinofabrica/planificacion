@@ -8,6 +8,7 @@ type TardanzaResumen = {
   total_tardanzas: number;
   total_6ta_tardanza: number;
   lastImprevistoMes: number | null;
+  inas6ta: Array<{ fecha_inasistencia: string; conv_6ta: boolean }>;
 };
 
 type TardanzaDetalle = {
@@ -27,6 +28,15 @@ type ConvocadoRow = {
   checked: boolean;
   saving: boolean;
   error: string | null;
+  conv6ta: Conv6taRow[];
+};
+
+type Conv6taRow = {
+  id_inasistencia: number;
+  fecha_inasistencia: string;
+  conv_6ta: boolean;
+  checked: boolean;
+  fecha_conv: string | null;
 };
 
 type TurnoOption = {
@@ -100,7 +110,7 @@ export default function TardanzasPanel() {
         .lte('fecha', until),
       supabase
         .from('inasistencias')
-        .select('id_agente, motivo, fecha_inasistencia, "6ta_tardanza"')
+        .select('id_agente, motivo, fecha_inasistencia, "6ta_tardanza", conv_6ta')
         .gte('fecha_inasistencia', since)
         .lte('fecha_inasistencia', until),
     ]);
@@ -126,10 +136,14 @@ export default function TardanzasPanel() {
     }>;
 
     const count6ta = new Map<number, number>();
+    const inas6taMap = new Map<number, Array<{ fecha_inasistencia: string; conv_6ta: boolean }>>();
     const lastImprevisto = new Map<number, { mes: number; fecha: string }>();
-    for (const r of (inasRes.data ?? []) as Array<{ id_agente: number; motivo: string; fecha_inasistencia: string; "6ta_tardanza": boolean }>) {
+    for (const r of (inasRes.data ?? []) as Array<{ id_agente: number; motivo: string; fecha_inasistencia: string; "6ta_tardanza": boolean; conv_6ta: boolean }>) {
       if (r["6ta_tardanza"]) {
         count6ta.set(r.id_agente, (count6ta.get(r.id_agente) ?? 0) + 1);
+        const list = inas6taMap.get(r.id_agente) ?? [];
+        list.push({ fecha_inasistencia: r.fecha_inasistencia, conv_6ta: r.conv_6ta });
+        inas6taMap.set(r.id_agente, list);
       }
       if (r.motivo?.toUpperCase() === 'IMPREVISTO') {
         const prev = lastImprevisto.get(r.id_agente);
@@ -153,6 +167,7 @@ export default function TardanzasPanel() {
           total_tardanzas: 1,
           total_6ta_tardanza: count6ta.get(r.id_agente) ?? 0,
           lastImprevistoMes: lastImprevisto.get(r.id_agente)?.mes ?? null,
+          inas6ta: inas6taMap.get(r.id_agente) ?? [],
         });
       }
     }
@@ -171,6 +186,7 @@ export default function TardanzasPanel() {
           total_tardanzas: 0,
           total_6ta_tardanza: count6ta.get(dp.id_agente) ?? 0,
           lastImprevistoMes: lastImprevisto.get(dp.id_agente)?.mes ?? null,
+          inas6ta: inas6taMap.get(dp.id_agente) ?? [],
         });
       }
     }
@@ -178,6 +194,7 @@ export default function TardanzasPanel() {
       const existing = map.get(idAgente);
       if (existing) {
         existing.total_6ta_tardanza = count;
+        existing.inas6ta = inas6taMap.get(idAgente) ?? existing.inas6ta;
         existing.lastImprevistoMes = lastImprevisto.get(idAgente)?.mes ?? existing.lastImprevistoMes;
       }
     }
@@ -204,6 +221,7 @@ export default function TardanzasPanel() {
             total_tardanzas: 0,
             total_6ta_tardanza: 0,
             lastImprevistoMes: lastImprevisto.get(dp.id_agente)?.mes ?? null,
+            inas6ta: [],
           });
         }
       }
@@ -240,11 +258,33 @@ export default function TardanzasPanel() {
     setConvocadosError('');
     setSaveSummary(null);
 
+    const { data: planisData, error: planisErr } = await supabase
+      .from('vista_planificacion_anio')
+      .select('id_plani')
+      .eq('fecha', selectedDate)
+      .eq('id_turno', selectedTurnoId);
+
+    if (planisErr) {
+      setConvocadosError('Error al cargar planificación: ' + planisErr.message);
+      setConvocados([]);
+      setLoadingConvocados(false);
+      return;
+    }
+
+    const planiIds = (planisData ?? []).map((p: { id_plani: number }) => p.id_plani);
+
+    if (planiIds.length === 0) {
+      setConvocados([]);
+      setTardanzaIdMap(new Map());
+      setLoadingConvocados(false);
+      return;
+    }
+
     const { data: convData, error: convErr } = await supabase
       .from('vista_convocatoria_completa')
       .select('id_convocatoria, id_agente, agente, fecha_turno, id_turno, tipo_turno')
       .eq('fecha_turno', selectedDate)
-      .eq('id_turno', selectedTurnoId)
+      .in('id_plani', planiIds)
       .eq('turno_cancelado', false)
       .eq('estado', 'vigente');
 
@@ -279,7 +319,7 @@ export default function TardanzasPanel() {
         .in('id_agente', agentIds),
       supabase
         .from('inasistencias')
-        .select('id_agente')
+        .select('id_inasistencia, id_agente, fecha_inasistencia, conv_6ta, fecha_conv')
         .gte('fecha_inasistencia', `${currentYear}-01-01`)
         .lte('fecha_inasistencia', `${currentYear}-12-31`)
         .eq('6ta_tardanza', true)
@@ -302,9 +342,20 @@ export default function TardanzasPanel() {
       }
     }
 
-    const inas6taPorAgente = new Map<number, number>();
-    for (const r of (inas6taData ?? []) as Array<{ id_agente: number }>) {
-      inas6taPorAgente.set(r.id_agente, (inas6taPorAgente.get(r.id_agente) ?? 0) + 1);
+    const inas6taPorAgente = new Map<number, Conv6taRow[]>();
+    for (const r of (inas6taData ?? []) as Array<{ id_inasistencia: number; id_agente: number; fecha_inasistencia: string; conv_6ta: boolean; fecha_conv: string | null }>) {
+      const list = inas6taPorAgente.get(r.id_agente) ?? [];
+      list.push({
+        id_inasistencia: r.id_inasistencia,
+        fecha_inasistencia: normDate(r.fecha_inasistencia),
+        conv_6ta: r.conv_6ta,
+        checked: r.conv_6ta,
+        fecha_conv: r.fecha_conv ? normDate(r.fecha_conv) : null,
+      });
+      inas6taPorAgente.set(r.id_agente, list);
+    }
+    for (const [, list] of inas6taPorAgente) {
+      list.sort((a, b) => a.fecha_inasistencia.localeCompare(b.fecha_inasistencia));
     }
 
     setTardanzaIdMap(tardFechaMap);
@@ -315,10 +366,11 @@ export default function TardanzasPanel() {
         id_agente: c.id_agente,
         agente: c.agente,
         total_tardanzas: tardPorAgente.get(c.id_agente) ?? 0,
-        total_6ta_tardanza: inas6taPorAgente.get(c.id_agente) ?? 0,
+        total_6ta_tardanza: (inas6taPorAgente.get(c.id_agente) ?? []).length,
         checked: tardFechaMap.has(c.id_agente),
         saving: false,
         error: null,
+        conv6ta: inas6taPorAgente.get(c.id_agente) ?? [],
       }))
     );
     setLoadingConvocados(false);
@@ -336,9 +388,24 @@ export default function TardanzasPanel() {
     ));
   };
 
+  const handleConvToggle = (idAgente: number, idInasistencia: number, checked: boolean) => {
+    setConvocados(prev => prev.map(c =>
+      c.id_agente === idAgente
+        ? {
+            ...c,
+            error: null,
+            conv6ta: c.conv6ta.map(ci =>
+              ci.id_inasistencia === idInasistencia ? { ...ci, checked } : ci
+            ),
+          }
+        : c
+    ));
+  };
+
   const handleSaveTardanzas = async () => {
     const toInsert: Array<{ id_agente: number }> = [];
     const toDelete: number[] = [];
+    const convUpdates: Array<{ id_inasistencia: number; conv_6ta: boolean; fecha_conv: string | null }> = [];
 
     for (const c of convocados) {
       const existingId = tardanzaIdMap.get(c.id_agente);
@@ -347,9 +414,18 @@ export default function TardanzasPanel() {
       } else if (!c.checked && existingId) {
         toDelete.push(existingId);
       }
+      for (const ci of c.conv6ta) {
+        if (ci.checked !== ci.conv_6ta) {
+          convUpdates.push({
+            id_inasistencia: ci.id_inasistencia,
+            conv_6ta: ci.checked,
+            fecha_conv: ci.checked ? selectedDate : null,
+          });
+        }
+      }
     }
 
-    if (toInsert.length === 0 && toDelete.length === 0) return;
+    if (toInsert.length === 0 && toDelete.length === 0 && convUpdates.length === 0) return;
 
     setSavingTardanzas(true);
     setSaveSummary(null);
@@ -420,6 +496,27 @@ export default function TardanzasPanel() {
       }
     }
 
+    for (const upd of convUpdates) {
+      try {
+        const { error: convErr } = await supabase
+          .from('inasistencias')
+          .update({ conv_6ta: upd.conv_6ta, fecha_conv: upd.fecha_conv })
+          .eq('id_inasistencia', upd.id_inasistencia);
+        if (convErr) throw convErr;
+        setConvocados(prev => prev.map(c => ({
+          ...c,
+          conv6ta: c.conv6ta.map(ci =>
+            ci.id_inasistencia === upd.id_inasistencia
+              ? { ...ci, conv_6ta: upd.conv_6ta, checked: upd.conv_6ta, fecha_conv: upd.fecha_conv }
+              : ci
+          ),
+        })));
+        ok += 1;
+      } catch {
+        fail += 1;
+      }
+    }
+
     setSaveSummary({ ok, fail });
     setSavingTardanzas(false);
 
@@ -473,6 +570,9 @@ export default function TardanzasPanel() {
     for (const c of convocados) {
       const existing = tardanzaIdMap.has(c.id_agente);
       if (c.checked !== existing) count += 1;
+      for (const ci of c.conv6ta) {
+        if (ci.checked !== ci.conv_6ta) count += 1;
+      }
     }
     return count;
   }, [convocados, tardanzaIdMap]);
@@ -542,16 +642,18 @@ export default function TardanzasPanel() {
           <div className="overflow-x-auto max-h-[50vh] overflow-y-auto">
             <table className="w-full text-left text-xs">
               <colgroup>
-                <col style={{ width: '40%' }} />
+                <col style={{ width: '36%' }} />
+                <col style={{ width: '16%' }} />
+                <col style={{ width: '14%' }} />
                 <col style={{ width: '22%' }} />
-                <col style={{ width: '18%' }} />
-                <col style={{ width: '20%' }} />
+                <col style={{ width: '12%' }} />
               </colgroup>
               <thead className="sticky top-0 bg-surface-container-lowest/90 backdrop-blur-sm z-10">
                 <tr className="border-b border-outline-variant/20">
                   <th className="py-2 px-2 font-semibold text-on-surface-variant">Residente</th>
                   <th className="py-2 px-2 font-semibold text-on-surface-variant text-center">Tardanzas (año)</th>
                   <th className="py-2 px-2 font-semibold text-on-surface-variant text-center">Inasist. 6ta</th>
+                  <th className="py-2 px-2 font-semibold text-on-surface-variant text-center">Conv</th>
                   <th className="py-2 px-2 font-semibold text-on-surface-variant text-center">Marca</th>
                 </tr>
               </thead>
@@ -571,6 +673,33 @@ export default function TardanzasPanel() {
                       <span className={c.total_6ta_tardanza > 0 ? 'text-red-600' : 'text-gray-400'}>
                         {c.total_6ta_tardanza}
                       </span>
+                    </td>
+                    <td className="py-1.5 px-2 text-center">
+                      {c.conv6ta.length === 0 ? (
+                        <span className="text-gray-300">—</span>
+                      ) : (
+                        <div className="flex flex-wrap gap-1.5 justify-center">
+                          {c.conv6ta.map((ci, idx) => (
+                            <label
+                              key={ci.id_inasistencia}
+                              className="flex flex-col items-center gap-0.5 cursor-pointer group"
+                              title={`${ci.fecha_inasistencia} — Conversación: ${ci.fecha_conv ?? 'sin fecha'}`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={ci.checked}
+                                disabled={c.saving || savingTardanzas}
+                                onChange={(e) => handleConvToggle(c.id_agente, ci.id_inasistencia, e.target.checked)}
+                                className="accent-primary w-4 h-4 cursor-pointer disabled:opacity-50"
+                                aria-label={`Conversación 6ta para ${c.agente} del ${ci.fecha_inasistencia}`}
+                              />
+                              <span className="text-[9px] font-mono text-gray-400 leading-none">
+                                {idx + 1}{ci.fecha_conv ? `-${ci.fecha_conv.slice(5)}` : ''}
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                      )}
                     </td>
                     <td className="py-1.5 px-2 text-center">
                       <input
@@ -633,8 +762,9 @@ export default function TardanzasPanel() {
           <div className="overflow-x-auto max-h-[60vh] overflow-y-auto">
             <table className="w-full text-left text-xs">
               <colgroup>
-                <col style={{ width: '40%' }} />
-                <col style={{ width: '22%' }} />
+                <col style={{ width: '36%' }} />
+                <col style={{ width: '14%' }} />
+                <col style={{ width: '12%' }} />
                 <col style={{ width: '18%' }} />
                 <col style={{ width: '20%' }} />
               </colgroup>
@@ -643,6 +773,7 @@ export default function TardanzasPanel() {
                   <th className="py-2 px-2 font-semibold text-on-surface-variant">Residente</th>
                   <th className="py-2 px-2 font-semibold text-on-surface-variant text-right">Tardanzas</th>
                   <th className="py-2 px-2 font-semibold text-on-surface-variant text-right">Inasist. 6ta</th>
+                  <th className="py-2 px-2 font-semibold text-on-surface-variant text-center">Conv</th>
                   <th className="py-2 px-2 font-semibold text-on-surface-variant text-center">Mes Imp</th>
                 </tr>
               </thead>
@@ -663,6 +794,27 @@ export default function TardanzasPanel() {
                       <span className={r.total_6ta_tardanza > 0 ? 'text-red-600' : 'text-gray-400'}>
                         {r.total_6ta_tardanza}
                       </span>
+                    </td>
+                    <td className="py-1.5 px-2 text-center">
+                      {r.inas6ta.length === 0 ? (
+                        <span className="text-gray-300">—</span>
+                      ) : (
+                        <div className="flex flex-wrap gap-1 justify-center">
+                          {r.inas6ta.map((i, idx) => (
+                            <span
+                              key={idx}
+                              title={i.fecha_inasistencia}
+                              className={`inline-flex items-center justify-center w-4 h-4 rounded text-[11px] font-bold ${
+                                i.conv_6ta
+                                  ? 'bg-emerald-100 text-emerald-700'
+                                  : 'bg-red-50 text-red-600'
+                              }`}
+                            >
+                              {i.conv_6ta ? '✓' : '✗'}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </td>
                     <td className="py-1.5 px-2 text-center font-mono">
                       {r.lastImprevistoMes ? (
