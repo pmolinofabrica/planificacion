@@ -3,6 +3,8 @@ import { supabase } from '../../lib/supabase';
 import type { SaldoDashboardView } from '../../types/database';
 
 type ViewMode = 'mensual' | 'historico';
+type SortKey = 'residente' | 'saldo';
+type SortDir = 'asc' | 'desc';
 
 interface HistorialMes {
   mes: number;
@@ -200,6 +202,8 @@ export default function SaldosPage() {
   const [calculatingMonth, setCalculatingMonth] = useState(false);
   const [calculatingYear, setCalculatingYear] = useState(false);
   const [error, setError] = useState('');
+  const [sortKey, setSortKey] = useState<SortKey>('residente');
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
 
   const fetchSaldos = useCallback(async () => {
     setLoading(true);
@@ -312,6 +316,34 @@ export default function SaldosPage() {
 
   const historicalColumnCount = useMemo(() => monthLabels.length + 2, []);
 
+  const sortedData = useMemo(() => {
+    const factor = sortDir === 'asc' ? 1 : -1;
+    return [...data].sort((a, b) => {
+      if (sortKey === 'residente') {
+        return a.residente.localeCompare(b.residente, 'es') * factor;
+      }
+      const diff = a.diferencia_saldo_48_ajustada - b.diferencia_saldo_48_ajustada;
+      if (diff !== 0) return diff * factor;
+      const diff12 = a.diferencia_saldo_12w_ajustada - b.diferencia_saldo_12w_ajustada;
+      if (diff12 !== 0) return diff12 * factor;
+      return a.residente.localeCompare(b.residente, 'es');
+    });
+  }, [data, sortKey, sortDir]);
+
+  const sortedHistoricalData = useMemo(() => {
+    const factor = sortDir === 'asc' ? 1 : -1;
+    return [...historicalData].sort((a, b) => {
+      if (sortKey === 'residente') {
+        return a.agente.localeCompare(b.agente, 'es') * factor;
+      }
+      const diff = a.saldoFinal - b.saldoFinal;
+      if (diff !== 0) return diff * factor;
+      return a.agente.localeCompare(b.agente, 'es');
+    });
+  }, [historicalData, sortKey, sortDir]);
+
+  const saldoSortLabel = viewMode === 'mensual' ? 'Dif. 48h / Dif. 12' : 'Saldo final';
+
   return (
     <div>
       <div className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
@@ -345,6 +377,24 @@ export default function SaldosPage() {
           </div>
 
           <div className="flex items-center gap-2 flex-wrap justify-end">
+            <select
+              value={sortKey}
+              onChange={(e) => setSortKey(e.target.value as SortKey)}
+              className="border border-gray-300 rounded px-3 py-1.5 text-sm bg-white"
+              title="Ordenar lista"
+            >
+              <option value="residente">Ordenar: Residente (A-Z)</option>
+              <option value="saldo">Ordenar: {saldoSortLabel}</option>
+            </select>
+
+            <button
+              onClick={() => setSortDir((dir) => (dir === 'asc' ? 'desc' : 'asc'))}
+              className="border border-gray-300 rounded px-3 py-1.5 text-sm bg-white hover:bg-gray-100"
+              title={sortDir === 'asc' ? 'Ascendente (cambiar a descendente)' : 'Descendente (cambiar a ascendente)'}
+            >
+              {sortDir === 'asc' ? '↑ Asc' : '↓ Desc'}
+            </button>
+
             {viewMode === 'mensual' && (
               <select
                 value={mes}
@@ -419,7 +469,7 @@ export default function SaldosPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {historicalData.map((row) => (
+              {sortedHistoricalData.map((row) => (
                 <tr key={row.id_agente} className="hover:bg-gray-50 align-top">
                   <td className="px-4 py-3 sticky left-0 bg-white z-10">
                     <div className="font-medium text-gray-900">{row.agente}</div>
@@ -477,7 +527,7 @@ export default function SaldosPage() {
                   </td>
                 </tr>
               ))}
-              {historicalData.length === 0 && (
+              {sortedHistoricalData.length === 0 && (
                 <tr>
                   <td colSpan={historicalColumnCount} className="px-4 py-8 text-center text-gray-500 italic">
                     No hay saldos historicos para este anio.
@@ -508,7 +558,7 @@ export default function SaldosPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {data.map((row) => (
+              {sortedData.map((row) => (
                 <tr key={row.id_agente} className="hover:bg-gray-50">
                   <td className="px-4 py-2 font-medium">
                     {row.residente} <span className="text-gray-400 font-normal">({row.dni})</span>
@@ -533,7 +583,7 @@ export default function SaldosPage() {
                   <td className="px-4 py-2 text-center text-gray-500">{row.horas_otros}</td>
                 </tr>
               ))}
-              {data.length === 0 && (
+              {sortedData.length === 0 && (
                 <tr>
                   <td colSpan={13} className="px-4 py-8 text-center text-gray-500 italic">
                     No hay saldos calculados para este mes. Presiona Recalcular.
