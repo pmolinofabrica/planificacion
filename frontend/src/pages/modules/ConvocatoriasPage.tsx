@@ -354,13 +354,13 @@ export default function ConvocatoriasPage() {
 
   const agentesAsignadosEnFecha = useMemo(() => {
     if (!completarFecha) return new Set<number>();
-    return new Set(data.filter(c => c.fecha_turno === completarFecha).map(c => c.id_agente));
+    return new Set(data.filter(c => c.fecha_turno === completarFecha && c.estado === 'vigente').map(c => c.id_agente));
   }, [data, completarFecha]);
 
   const asignadosList = useMemo(() => {
     if (!completarFecha) return [];
     return data
-      .filter(c => c.fecha_turno === completarFecha)
+      .filter(c => c.fecha_turno === completarFecha && c.estado === 'vigente')
       .map(c => {
         const [apellido, nombre] = c.agente.split(', ');
         return { id_agente: c.id_agente, agente: `${apellido}, ${nombre?.[0] ?? '?'}.`, turno: c.tipo_turno };
