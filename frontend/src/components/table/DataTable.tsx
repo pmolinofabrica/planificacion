@@ -25,6 +25,7 @@ interface DataTableProps<T extends object> {
   buildNewRow: () => T;
   onBatchInsert?: (inserts: T[]) => Promise<{ successes: T[]; failures: BatchError[] }>;
   onBatchUpdate?: (updates: { id: unknown; changes: Partial<T> }[], rows: Map<string, TrackedRow<T>>) => Promise<BatchResult<{ id: unknown }>>;
+  onBatchDelete?: (deletedIds: unknown[]) => void | Promise<void>;
   enableClone?: boolean;
   /** Pre-built rows to inject (e.g. Grupo A/B bulk), consumed once */
   bulkRows?: T[];
@@ -53,7 +54,7 @@ export interface DataTableHandle<T extends object> {
 export default function DataTable<T extends object>(props: DataTableProps<T>) {
   const { tableName, pkField, initialData, columns, onRefresh, buildNewRow, enableClone,
           bulkRows, onBulkRowsConsumed, extraToolbar, customMassActions, deleteMode = 'batch',
-          getRowClassName, tableRef } = props;
+          getRowClassName, tableRef, onBatchDelete } = props;
   const [rows, setRows] = useState<TrackedRow<T>[]>(() =>
     initialData.map((d) => ({
       _id: d[pkField] !== null && d[pkField] !== undefined ? String(d[pkField]) : uuidv4(),
@@ -253,6 +254,7 @@ export default function DataTable<T extends object>(props: DataTableProps<T>) {
     }
 
     const deletedPkSet = new Set(result.successes.map((id) => String(id)));
+    if (onBatchDelete) await onBatchDelete(result.successes);
     setRows((prev) => prev.filter((row) => !deletedPkSet.has(String(row.data[pkField]))));
     setSelectedIds(new Set());
     setBatchResult({ successes: result.successes.length, failures: [] });
@@ -303,6 +305,7 @@ export default function DataTable<T extends object>(props: DataTableProps<T>) {
 
     if (diff.deletes.length > 0) {
       const result = await batchDelete(tableName, String(pkField), diff.deletes);
+      if (onBatchDelete && result.failures.length === 0) await onBatchDelete(result.successes);
       totalSuccesses += result.successes.length;
       totalFailures = [...totalFailures, ...result.failures];
     }

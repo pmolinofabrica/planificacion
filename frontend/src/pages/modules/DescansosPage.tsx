@@ -502,6 +502,60 @@ export default function DescansosPage() {
     editableColumn<DescansoDraft>('observaciones', 'Observaciones'),
   ], [agentesOptions]);
 
+  const cancelConvocatoria = async (idAgente: number, fecha: string) => {
+    const { data: plani } = await supabase
+      .from('vista_planificacion_anio')
+      .select('id_plani')
+      .eq('fecha', fecha)
+      .in('tipo_turno', ['descanso', 'Descanso'])
+      .order('id_plani', { ascending: true })
+      .limit(1);
+    const idPlani = (plani ?? [])[0]?.id_plani;
+    if (!idPlani) return;
+    await supabase
+      .from('convocatoria')
+      .update({ estado: 'cancelada' })
+      .eq('id_plani', idPlani)
+      .eq('id_agente', idAgente)
+      .eq('estado', 'vigente');
+  };
+
+  const ensureConvocatoria = async (idAgente: number, fecha: string) => {
+    const { data: plani } = await supabase
+      .from('vista_planificacion_anio')
+      .select('id_plani, id_turno')
+      .eq('fecha', fecha)
+      .in('tipo_turno', ['descanso', 'Descanso'])
+      .order('id_plani', { ascending: true })
+      .limit(1);
+    const planMatch = (plani ?? [])[0] as ConvocatoriaPlani | undefined;
+    if (!planMatch) return;
+
+    const { data: conv } = await supabase
+      .from('convocatoria')
+      .select('id_convocatoria, estado')
+      .eq('id_plani', planMatch.id_plani)
+      .eq('id_agente', idAgente)
+      .maybeSingle();
+
+    if (conv?.estado === 'vigente') return;
+
+    if (conv?.estado === 'cancelada') {
+      await supabase
+        .from('convocatoria')
+        .update({ estado: 'vigente' })
+        .eq('id_convocatoria', conv.id_convocatoria);
+    } else {
+      await supabase.from('convocatoria').insert({
+        id_plani: planMatch.id_plani,
+        id_agente: idAgente,
+        id_turno: planMatch.id_turno,
+        fecha_convocatoria: fecha,
+        estado: 'vigente',
+      });
+    }
+  };
+
   const handleDescansoBatchUpdate = useCallback(async (
     updates: { id: unknown; changes: Partial<DescansoDraft> }[],
     rows: Map<string, TrackedRow<DescansoDraft>>
@@ -511,6 +565,19 @@ export default function DescansosPage() {
 
     for (const upd of updates) {
       const { id, changes } = upd;
+
+      const { data: current } = await supabase
+        .from('descansos')
+        .select('dia_solicitado, estado')
+        .eq('id_desc', id)
+        .maybeSingle();
+
+      const oldDia = current?.dia_solicitado ? normalizeDate(current.dia_solicitado) : '';
+      const oldEstado = current?.estado ?? '';
+      const newDia = changes.dia_solicitado ? normalizeDate(changes.dia_solicitado) : oldDia;
+      const newEstado = changes.estado ?? oldEstado;
+      const diaCambio = changes.dia_solicitado !== undefined && newDia !== oldDia;
+
       const { error: updErr } = await supabase
         .from('descansos')
         .update(changes)
@@ -521,51 +588,39 @@ export default function DescansosPage() {
       }
       successes.push({ id });
 
-      if (changes.estado === 'asignado') {
-        const row = [...rows.values()].find(r => String(r.data.id_desc) === String(id));
-        const diaSolicitado = row?.data.dia_solicitado ? normalizeDate(row.data.dia_solicitado) : '';
-        const idAgente = row?.data.id_agente;
-        if (!diaSolicitado || !idAgente) continue;
+      const row = [...rows.values()].find(r => String(r.data.id_desc) === String(id));
+      const idAgente = row?.data.id_agente ?? 0;
+      if (!idAgente) continue;
 
-        const { data: plani } = await supabase
-          .from('vista_planificacion_anio')
-          .select('id_plani, id_turno')
-          .eq('fecha', diaSolicitado)
-          .in('tipo_turno', ['descanso', 'Descanso'])
-          .order('id_plani', { ascending: true })
-          .limit(1);
+      if (diaCambio && oldDia && oldEstado === 'asignado') {
+        await cancelConvocatoria(idAgente, oldDia);
+      }
 
-        const planMatch = (plani ?? [])[0] as ConvocatoriaPlani | undefined;
-        if (!planMatch) continue;
-
-        const { data: conv } = await supabase
-          .from('convocatoria')
-          .select('id_convocatoria, estado')
-          .eq('id_plani', planMatch.id_plani)
-          .eq('id_agente', idAgente)
-          .maybeSingle();
-
-        if (conv?.estado === 'vigente') continue;
-
-        if (conv?.estado === 'cancelada') {
-          await supabase
-            .from('convocatoria')
-            .update({ estado: 'vigente' })
-            .eq('id_convocatoria', conv.id_convocatoria);
-        } else {
-          await supabase.from('convocatoria').insert({
-            id_plani: planMatch.id_plani,
-            id_agente: idAgente,
-            id_turno: planMatch.id_turno,
-            fecha_convocatoria: diaSolicitado,
-            estado: 'vigente',
-          });
-        }
+      const shouldHaveConv = newEstado === 'asignado' && newDia;
+      if (shouldHaveConv) {
+        await ensureConvocatoria(idAgente, newDia);
+      } else if (diaCambio && !shouldHaveConv && oldEstado === 'asignado') {
+        await cancelConvocatoria(idAgente, oldDia);
       }
     }
 
     return { successes, failures };
   }, []);
+
+  const handleDescansoBatchDelete = useCallback(async (deletedIds: unknown[]) => {
+    for (const id of deletedIds) {
+      const { data: desc } = await supabase
+        .from('descansos')
+        .select('id_agente, dia_solicitado, estado')
+        .eq('id_desc', id)
+        .maybeSingle();
+      if (!desc || desc.estado !== 'asignado' || !desc.dia_solicitado) continue;
+      const fecha = normalizeDate(desc.dia_solicitado);
+      if (!fecha) continue;
+      await cancelConvocatoria(desc.id_agente, fecha);
+    }
+    await fetchData();
+  }, [fetchData]);
 
   const massActions = [
     {
@@ -726,6 +781,7 @@ export default function DescansosPage() {
           columns={columns}
           onRefresh={fetchData}
           onBatchUpdate={handleDescansoBatchUpdate}
+          onBatchDelete={handleDescansoBatchDelete}
           buildNewRow={() => ({ ...newDescansoTemplate })}
           customMassActions={massActions}
         />
