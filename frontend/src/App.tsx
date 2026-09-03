@@ -19,6 +19,7 @@ import CapacitacionesPage from './pages/modules/CapacitacionesPage';
 import DispositivosPage from './pages/modules/DispositivosPage';
 import CapacitacionesDispositivoPage from './pages/modules/CapacitacionesDispositivoPage';
 import SaldosPage from './pages/modules/SaldosPage';
+import CambioConvocatoriaPage from './pages/modules/CambioConvocatoriaPage';
 import ModuleDrawer from './components/layout/ModuleDrawer';
 import CertificadosPanel from './components/modules/CertificadosPanel';
 import TardanzasPanel from './components/modules/TardanzasPanel';
@@ -33,10 +34,11 @@ type SimpleTab = 'certificados' | 'tardanzas' | 'inasistencias';
 
 // Menu grouped according to requirements
 const NAV_GROUPS = [
-  // Group 1: Planificación, Convocatoria, Descansos, Saldos
+  // Group 1: Planificación, Convocatoria, Cambio Convocatoria, Descansos, Saldos
   [
     { path: '/planificacion', label: 'Planificación' },
     { path: '/convocatorias', label: 'Convocatorias' },
+    { path: '/cambio-convocatoria', label: 'Cambio Convocatoria' },
     { path: '/descansos', label: 'Descansos' },
     { path: '/saldos', label: 'Saldos' },
   ],
@@ -480,6 +482,14 @@ function App() {
             element={
               <Layout>
                 <SaldosPage />
+              </Layout>
+            }
+          />
+          <Route
+            path="/cambio-convocatoria"
+            element={
+              <Layout>
+                <CambioConvocatoriaPage />
               </Layout>
             }
           />
