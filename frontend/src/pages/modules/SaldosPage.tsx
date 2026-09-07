@@ -12,8 +12,12 @@ interface HistorialMes {
   horasCumplidasAcumuladas: number;
   horasObjetivoMes: number;
   horasObjetivoAcumuladas: number;
+  horasObjetivoMes12w: number;
+  horasObjetivoAcumuladas12w: number;
   saldoMensual: number;
   saldoAcumulado: number;
+  saldoMensual12w: number;
+  saldoAcumulado12w: number;
   horasConvocadas: number;
   horasCanceladas: number;
 }
@@ -26,6 +30,8 @@ interface HistorialRow {
   totalCumplido: number;
   totalObjetivo: number;
   saldoFinal: number;
+  totalObjetivo12w: number;
+  saldoFinal12w: number;
 }
 
 interface CohortAgentMeta {
@@ -117,15 +123,19 @@ const buildHistorialRows = (
     const meses: Array<HistorialMes | null> = [];
     let cumulativeCompleted = 0;
     let cumulativeObjective = 0;
+    let cumulativeObjective12w = 0;
 
     for (let month = 1; month <= 12; month += 1) {
       const row = rowsByAgentAndMonth.get(`${resident.id_agente}-${month}`);
       const monthlyCompleted = row?.total_horas_convocadas ?? 0;
       const monthlyObjectiveBase = row?.objetivo_mensual_48 ?? 48;
+      const monthlyObjectiveBase12w = row?.objetivo_mensual_12w ?? 48;
       const monthlyObjective = getProratedObjective(year, month, monthlyObjectiveBase, cohortConfig, resident);
+      const monthlyObjective12w = getProratedObjective(year, month, monthlyObjectiveBase12w, cohortConfig, resident);
 
       cumulativeCompleted += monthlyCompleted;
       cumulativeObjective += monthlyObjective;
+      cumulativeObjective12w += monthlyObjective12w;
 
       const convocadas = row?.horas_convocadas ?? 0;
       const canceladas = row?.horas_canceladas ?? 0;
@@ -136,8 +146,12 @@ const buildHistorialRows = (
         horasCumplidasAcumuladas: Number(cumulativeCompleted.toFixed(1)),
         horasObjetivoMes: monthlyObjective,
         horasObjetivoAcumuladas: Number(cumulativeObjective.toFixed(1)),
+        horasObjetivoMes12w: monthlyObjective12w,
+        horasObjetivoAcumuladas12w: Number(cumulativeObjective12w.toFixed(1)),
         saldoMensual: Number((monthlyCompleted - monthlyObjective).toFixed(1)),
         saldoAcumulado: Number((cumulativeCompleted - cumulativeObjective).toFixed(1)),
+        saldoMensual12w: Number((monthlyCompleted - monthlyObjective12w).toFixed(1)),
+        saldoAcumulado12w: Number((cumulativeCompleted - cumulativeObjective12w).toFixed(1)),
         horasConvocadas: convocadas,
         horasCanceladas: canceladas,
       });
@@ -151,6 +165,8 @@ const buildHistorialRows = (
       totalCumplido: Number(cumulativeCompleted.toFixed(1)),
       totalObjetivo: Number(cumulativeObjective.toFixed(1)),
       saldoFinal: Number((cumulativeCompleted - cumulativeObjective).toFixed(1)),
+      totalObjetivo12w: Number(cumulativeObjective12w.toFixed(1)),
+      saldoFinal12w: Number((cumulativeCompleted - cumulativeObjective12w).toFixed(1)),
     };
   });
 };
@@ -465,7 +481,7 @@ export default function SaldosPage() {
                     {label}
                   </th>
                 ))}
-                <th className="px-4 py-3 font-semibold border-b text-center min-w-[140px]">Saldo final</th>
+                <th className="px-4 py-3 font-semibold border-b text-center min-w-[160px]">Saldo final<br/><span className="text-[10px] font-normal opacity-70">48h / 12</span></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -475,7 +491,7 @@ export default function SaldosPage() {
                     <div className="font-medium text-gray-900">{row.agente}</div>
                     <div className="text-xs text-gray-500">{row.dni || 'Sin DNI'}</div>
                     <div className="text-xs text-gray-400 mt-1">
-                      Acum.: {formatHours(row.totalCumplido)} / Obj.: {formatHours(row.totalObjetivo)}
+                      Acum.: {formatHours(row.totalCumplido)} / Obj. 48h: {formatHours(row.totalObjetivo)} / Obj. 12: {formatHours(row.totalObjetivo12w)}
                     </div>
                   </td>
                   {row.meses.map((monthData, index) => (
@@ -483,7 +499,7 @@ export default function SaldosPage() {
                       {monthData ? (
                         <div
                           className={`rounded-xl border p-3 text-left shadow-sm ${getSaldoClasses(monthData.saldoAcumulado)}`}
-                          title={`Mes ${monthData.mes}: cumplidas ${formatHours(monthData.horasCumplidasAcumuladas)}, objetivo ${formatHours(monthData.horasObjetivoAcumuladas)}, saldo ${formatHours(monthData.saldoAcumulado)}`}
+                          title={`Mes ${monthData.mes}: cumplidas ${formatHours(monthData.horasCumplidasAcumuladas)}, obj 48h ${formatHours(monthData.horasObjetivoAcumuladas)}, obj 12 ${formatHours(monthData.horasObjetivoAcumuladas12w)}, saldo 48h ${formatHours(monthData.saldoAcumulado)}, saldo 12 ${formatHours(monthData.saldoAcumulado12w)}`}
                         >
                           <div className="grid gap-2">
                             <div className="rounded-lg border border-violet-200 bg-violet-50 px-2 py-2 text-violet-800">
@@ -498,18 +514,30 @@ export default function SaldosPage() {
                             </div>
                             <div className="rounded-lg border border-amber-200 bg-amber-50 px-2 py-2 text-amber-900">
                               <div className="text-[10px] uppercase tracking-wider opacity-75">A cumplir</div>
-                              <div className="text-base font-semibold">{formatHours(monthData.horasObjetivoMes)}</div>
-                              <div className="text-[11px] opacity-80">Acum: {formatHours(monthData.horasObjetivoAcumuladas)}</div>
+                              <div className="flex items-center gap-1">
+                                <span className="text-[10px] opacity-80">48h:</span>
+                                <span className="text-sm font-semibold">{formatHours(monthData.horasObjetivoMes)}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <span className="text-[10px] opacity-80">12:</span>
+                                <span className="text-sm font-semibold">{formatHours(monthData.horasObjetivoMes12w)}</span>
+                              </div>
                             </div>
                             <div className={`rounded-lg border px-2 py-2 ${getSaldoClasses(monthData.saldoAcumulado)}`}>
                               <div className="text-[10px] uppercase tracking-wider opacity-75">Saldo (dif.)</div>
-                              <div className="text-base font-bold">
-                                {monthData.saldoAcumulado > 0 ? '+' : ''}
-                                {formatHours(monthData.saldoAcumulado)}
+                              <div className="flex items-center gap-1">
+                                <span className="text-[10px] opacity-80">48h:</span>
+                                <span className="text-sm font-bold">
+                                  {monthData.saldoAcumulado > 0 ? '+' : ''}
+                                  {formatHours(monthData.saldoAcumulado)}
+                                </span>
                               </div>
-                              <div className="text-[11px] opacity-80">
-                                Mes: {monthData.saldoMensual > 0 ? '+' : ''}
-                                {formatHours(monthData.saldoMensual)}
+                              <div className="flex items-center gap-1">
+                                <span className="text-[10px] opacity-80">12:</span>
+                                <span className="text-sm font-bold">
+                                  {monthData.saldoAcumulado12w > 0 ? '+' : ''}
+                                  {formatHours(monthData.saldoAcumulado12w)}
+                                </span>
                               </div>
                             </div>
                           </div>
@@ -520,9 +548,29 @@ export default function SaldosPage() {
                     </td>
                   ))}
                   <td className="px-4 py-3 text-center">
-                    <div className={`inline-flex min-w-[96px] justify-center rounded-lg border px-3 py-2 font-bold ${getSaldoClasses(row.saldoFinal)}`}>
-                      {row.saldoFinal > 0 ? '+' : ''}
-                      {formatHours(row.saldoFinal)}
+                    <div className="flex flex-col gap-2 min-w-[160px]">
+                      <div
+                        className="flex flex-col rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-blue-800"
+                        title={`Obj. 48h: ${formatHours(row.totalObjetivo)} - Cumplidas: ${formatHours(row.totalCumplido)} = ${row.saldoFinal > 0 ? '+' : ''}${formatHours(row.saldoFinal)}`}
+                      >
+                        <span className="text-[10px] uppercase tracking-wider font-bold opacity-80">Obj. 48h</span>
+                        <span className="text-[11px] opacity-80">{formatHours(row.totalObjetivo)} - {formatHours(row.totalCumplido)}</span>
+                        <span className={`text-lg font-bold ${row.saldoFinal < 0 ? 'text-red-600' : row.saldoFinal > 0 ? 'text-emerald-600' : ''}`}>
+                          {row.saldoFinal > 0 ? '+' : ''}
+                          {formatHours(row.saldoFinal)}
+                        </span>
+                      </div>
+                      <div
+                        className="flex flex-col rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-violet-800"
+                        title={`Obj. 12: ${formatHours(row.totalObjetivo12w)} - Cumplidas: ${formatHours(row.totalCumplido)} = ${row.saldoFinal12w > 0 ? '+' : ''}${formatHours(row.saldoFinal12w)}`}
+                      >
+                        <span className="text-[10px] uppercase tracking-wider font-bold opacity-80">Obj. 12</span>
+                        <span className="text-[11px] opacity-80">{formatHours(row.totalObjetivo12w)} - {formatHours(row.totalCumplido)}</span>
+                        <span className={`text-lg font-bold ${row.saldoFinal12w < 0 ? 'text-red-600' : row.saldoFinal12w > 0 ? 'text-emerald-600' : ''}`}>
+                          {row.saldoFinal12w > 0 ? '+' : ''}
+                          {formatHours(row.saldoFinal12w)}
+                        </span>
+                      </div>
                     </div>
                   </td>
                 </tr>
