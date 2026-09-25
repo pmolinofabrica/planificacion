@@ -4,6 +4,9 @@ import DataTable, { editableColumn } from '../../components/table/DataTable';
 import type { DataTableHandle } from '../../components/table/DataTable';
 import { EditableCell } from '../../components/table/EditableCell';
 import DisponibilidadModal from '../../components/modules/DisponibilidadModal';
+import { ModalShell } from '../../components/ui/ModalShell';
+import { Button } from '../../components/ui/Button';
+import { Card } from '../../components/ui/Card';
 import type { TrackedRow, BatchError } from '../../types/table';
 import type { ColumnDef } from '@tanstack/react-table';
 
@@ -594,7 +597,7 @@ export default function ConvocatoriasPage() {
     };
 
     return [
-      { id: 'id_convocatoria', accessorFn: row => row.data.id_convocatoria, header: 'ID', cell: ({ row }) => <span className="text-gray-400 text-xs">{row.original.data.id_convocatoria || '—'}</span>, size: 50 },
+      { id: 'id_convocatoria', accessorFn: row => row.data.id_convocatoria, header: 'ID', cell: ({ row }) => <span className="text-gray-500 text-xs">{row.original.data.id_convocatoria || '—'}</span>, size: 50 },
       editableColumn<ViewConvocatoria>('dni', 'Agente', 'select', agentesOptions),
       planiCol,
       { id: 'fecha_turno', accessorFn: row => row.data.fecha_turno, header: 'Fecha', cell: ({ row }) => <span className="text-gray-600 text-xs">{row.original.data.fecha_turno || '—'}</span> },
@@ -615,8 +618,8 @@ export default function ConvocatoriasPage() {
         <div>
           <h2 className="text-3xl font-headline font-extrabold tracking-tighter text-on-surface">Convocatorias</h2>
         </div>
-        <div className="flex gap-2">
-          <select value={filtroMes} onChange={(e) => setFiltroMes(Number(e.target.value))} className="bg-surface-container-lowest shadow-sm px-3 py-1.5 rounded-lg border border-outline-variant/10 text-xs font-bold text-slate-700 hover:bg-surface-container-low transition-colors outline-none focus:ring-1 focus:ring-primary font-body">
+        <div className="flex flex-wrap items-center gap-2">
+          <select value={filtroMes} onChange={(e) => setFiltroMes(Number(e.target.value))} className="bg-surface-container-lowest shadow-sm px-3 py-2 rounded-lg border border-outline-variant/10 text-xs font-bold text-slate-700 hover:bg-surface-container-low transition-colors outline-none focus:ring-1 focus:ring-primary font-body">
             {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
               <option key={m} value={m}>Mes {m}</option>
             ))}
@@ -636,7 +639,7 @@ export default function ConvocatoriasPage() {
         </div>
       </div>
 
-      <div className="mb-6 mx-2 p-4 bg-surface-container-lowest/70 backdrop-blur-md rounded-xl border border-outline-variant/10 shadow-sm">
+      <Card variant="glass" className="mb-6 mx-2 p-4">
         <div className="text-xs font-bold text-primary mb-3 font-headline uppercase tracking-wider">Dashboard Planificaciones</div>
         <div className="flex gap-3 flex-wrap mb-3">
           {turnoAbbrs.map(t => (
@@ -707,9 +710,9 @@ export default function ConvocatoriasPage() {
             </table>
           </div>
         ) : (
-          <div className="text-xs text-slate-400 italic py-2">Seleccione uno o mas turnos para visualizar.</div>
+          <div className="text-xs text-on-surface-variant italic py-2">Seleccione uno o mas turnos para visualizar.</div>
         )}
-      </div>
+      </Card>
 
       {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">{error}</div>}
 
@@ -742,66 +745,75 @@ export default function ConvocatoriasPage() {
                   <option key={p.value} value={p.value}>{p.label}</option>
                 ))}
               </select>
-              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-widest">+</span>
-              <button
+              <span className="text-xs uppercase font-bold text-on-surface-variant tracking-widest">+</span>
+              <Button
+                variant="tonal"
+                size="sm"
                 onClick={() => addGrupo('A')}
-                className="bg-primary/10 text-primary px-3 py-1.5 rounded-lg text-[11px] font-bold font-headline uppercase tracking-wider hover:bg-primary/20 transition-all active:scale-95"
                 title="Agregar las 18 filas del Grupo A"
               >
                 + GRUPO A ({agentes.filter(a => a.grupo_capacitacion === 'A').length})
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="tonal"
+                size="sm"
                 onClick={() => addGrupo('B')}
-                className="bg-primary/10 text-primary px-3 py-1.5 rounded-lg text-[11px] font-bold font-headline uppercase tracking-wider hover:bg-primary/20 transition-all active:scale-95"
                 title="Agregar las 18 filas del Grupo B"
               >
                 + GRUPO B ({agentes.filter(a => a.grupo_capacitacion === 'B').length})
-              </button>
+              </Button>
               <button
                 onClick={addTodosLosGrupos}
-                className="bg-surface-container-high text-on-surface-variant px-3 py-1.5 rounded-lg text-[11px] font-bold font-headline uppercase tracking-wider hover:bg-surface-dim transition-all border border-outline-variant/20 active:scale-95"
+                className="bg-surface-container-high text-on-surface-variant px-3 py-1.5 rounded-lg text-xs font-bold font-headline uppercase tracking-wider hover:bg-surface-dim transition-all border border-outline-variant/20 active:scale-95"
                 title="Agregar los 36 residentes (A + B) ordenados por apellido"
               >
                 +36 (TODOS)
               </button>
-              <button
+              <Button
+                variant="tonal"
+                size="sm"
                 onClick={() => addAgentesPorDiaYGrupo(4, 'manana')}
-                className="bg-primary/10 text-primary px-3 py-1.5 rounded-lg text-[11px] font-bold font-headline uppercase tracking-wider hover:bg-primary/20 transition-all active:scale-95"
                 title="Agregar agentes asignados a Jueves Mañana"
               >
                 + JUEVES MAÑANA ({countAgentesPorDiaYGrupo(4, 'manana')})
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="tonal"
+                size="sm"
                 onClick={() => addAgentesPorDiaYGrupo(4, 'tarde')}
-                className="bg-primary/10 text-primary px-3 py-1.5 rounded-lg text-[11px] font-bold font-headline uppercase tracking-wider hover:bg-primary/20 transition-all active:scale-95"
                 title="Agregar agentes asignados a Jueves Tarde"
               >
                 + JUEVES TARDE ({countAgentesPorDiaYGrupo(4, 'tarde')})
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="tonal"
+                size="sm"
                 onClick={() => addAgentesPorDiaYGrupo(5, 'manana')}
-                className="bg-primary/10 text-primary px-3 py-1.5 rounded-lg text-[11px] font-bold font-headline uppercase tracking-wider hover:bg-primary/20 transition-all active:scale-95"
                 title="Agregar agentes asignados a Viernes Mañana"
               >
                 + VIERNES MAÑANA ({countAgentesPorDiaYGrupo(5, 'manana')})
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="tonal"
+                size="sm"
                 onClick={() => addAgentesPorDiaYGrupo(5, 'tarde')}
-                className="bg-primary/10 text-primary px-3 py-1.5 rounded-lg text-[11px] font-bold font-headline uppercase tracking-wider hover:bg-primary/20 transition-all active:scale-95"
                 title="Agregar agentes asignados a Viernes Tarde"
               >
                 + VIERNES TARDE ({countAgentesPorDiaYGrupo(5, 'tarde')})
-              </button>
+              </Button>
             </div>
           }
         />
       )}
-      {showCompletar && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center pt-10 bg-black/30 backdrop-blur-sm" onClick={() => setShowCompletar(false)}>
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl p-6 max-h-[80vh] overflow-y-auto m-4" onClick={e => e.stopPropagation()}>
+      <ModalShell
+        open={showCompletar}
+        onClose={() => setShowCompletar(false)}
+        overlayClassName="flex items-start justify-center pt-10 bg-black/30 backdrop-blur-sm"
+        panelClassName="bg-white rounded-xl shadow-2xl w-full max-w-3xl p-6 max-h-[80vh] overflow-y-auto m-4"
+      >
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-headline text-lg font-bold text-gray-800">Completar Convocatoria</h3>
-              <button onClick={() => setShowCompletar(false)} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+              <button onClick={() => setShowCompletar(false)} className="text-gray-500 hover:text-gray-600 text-xl leading-none transition-colors">&times;</button>
             </div>
             <div className="mb-4">
               <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 block">Fecha</label>
@@ -817,14 +829,14 @@ export default function ConvocatoriasPage() {
               </select>
             </div>
             {completarFecha && (
-              <div className="grid grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Asignados ({asignadosList.length})</h4>
                   <div className="max-h-64 overflow-y-auto border border-outline-variant/20 rounded-lg divide-y divide-outline-variant/10">
                     {asignadosList.map(a => (
-                      <div key={a.id_agente} className="py-1.5 px-3 text-sm text-gray-700">{a.agente} <span className="text-xs text-gray-400">- {a.turno}</span></div>
+                      <div key={a.id_agente} className="py-1.5 px-3 text-sm text-gray-700">{a.agente} <span className="text-xs text-gray-500">- {a.turno}</span></div>
                     ))}
-                    {asignadosList.length === 0 && <div className="py-4 text-xs text-gray-400 text-center italic">Sin convocatorias en esta fecha.</div>}
+                    {asignadosList.length === 0 && <div className="py-4 text-xs text-gray-500 text-center italic">Sin convocatorias en esta fecha.</div>}
                   </div>
                 </div>
                 <div>
@@ -843,30 +855,33 @@ export default function ConvocatoriasPage() {
                     {sinAsignarList.map(a => (
                       <div key={a.id_agente} className="py-1.5 px-3 text-sm text-gray-700">{a.apellido}, {a.nombre[0]}.</div>
                     ))}
-                    {sinAsignarList.length === 0 && <div className="py-4 text-xs text-gray-400 text-center italic">Todos los agentes ya estan asignados.</div>}
+                    {sinAsignarList.length === 0 && <div className="py-4 text-xs text-gray-500 text-center italic">Todos los agentes ya estan asignados.</div>}
                   </div>
                   <button
                     onClick={agregarCompletar}
                     disabled={!completarPlani || sinAsignarList.length === 0}
-                    className="w-full bg-primary text-white px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="w-full bg-primary text-white px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                   >
                     Agregar {sinAsignarList.length} agente(s)
                   </button>
                 </div>
               </div>
             )}
-          </div>
-        </div>
-      )}
-      {popupCell && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center pt-10 bg-black/30 backdrop-blur-sm" onClick={() => { setPopupCell(null); setPopupRows([]); setShowFullList(false); setPopupInasistencias({}); setPopupTardanzas({}); }}>
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl p-6 max-h-[80vh] overflow-y-auto m-4" onClick={e => e.stopPropagation()}>
+      </ModalShell>
+      <ModalShell
+        open={!!popupCell}
+        onClose={() => { setPopupCell(null); setPopupRows([]); setShowFullList(false); setPopupInasistencias({}); setPopupTardanzas({}); }}
+        overlayClassName="flex items-start justify-center pt-10 bg-black/30 backdrop-blur-sm"
+        panelClassName="bg-white rounded-xl shadow-2xl w-full max-w-2xl p-6 max-h-[80vh] overflow-y-auto m-4"
+      >
+        {popupCell && (
+          <>
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-headline text-lg font-bold text-gray-800 flex items-center gap-2">
                 {popupCell.turnoAbbr} — Día {popupCell.dayNum}
                 <button
                   onClick={() => setShowFullList(!showFullList)}
-                  className={`p-1 rounded transition-colors ${showFullList ? 'bg-primary/10 text-primary' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}
+                  className={`p-1 rounded transition-colors ${showFullList ? 'bg-primary/10 text-primary' : 'text-gray-500 hover:text-gray-600 hover:bg-gray-100'}`}
                   title="Ver lista completa de residentes"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -874,7 +889,7 @@ export default function ConvocatoriasPage() {
                   </svg>
                 </button>
               </h3>
-              <button onClick={() => { setPopupCell(null); setPopupRows([]); setShowFullList(false); setPopupInasistencias({}); setPopupTardanzas({}); }} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+              <button onClick={() => { setPopupCell(null); setPopupRows([]); setShowFullList(false); setPopupInasistencias({}); setPopupTardanzas({}); }} className="text-gray-500 hover:text-gray-600 text-xl leading-none transition-colors">&times;</button>
             </div>
             <div className="overflow-x-auto">
               <table className="min-w-full text-left text-xs">
@@ -896,12 +911,12 @@ export default function ConvocatoriasPage() {
                           <span className={popupSaldos[r.id_agente] < 0 ? 'text-red-600' : popupSaldos[r.id_agente] > 0 ? 'text-emerald-600' : 'text-gray-500'}>
                             {popupSaldos[r.id_agente].toFixed(1)}
                           </span>
-                        ) : <span className="text-gray-300">-</span>}
+                        ) : <span className="text-gray-500">-</span>}
                       </td>
                       <td className="py-1.5 px-2 text-center">
                         <button
                           onClick={() => togglePopupEstado(r.id_convocatoria)}
-                          className={`px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider transition-all border ${
+                          className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider transition-all border ${
                             r.estado === 'cancelada'
                               ? 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100'
                               : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
@@ -910,18 +925,18 @@ export default function ConvocatoriasPage() {
                           {r.estado === 'cancelada' ? 'Cancelada' : 'Vigente'}
                         </button>
                       </td>
-                      <td className="py-1.5 px-2 text-center text-[11px]">
+                      <td className="py-1.5 px-2 text-center text-xs">
                         {popupInasistencias[`${r.id_agente}|${r.fecha_turno}`] ? (
                           <span className="text-amber-700 font-medium">{popupInasistencias[`${r.id_agente}|${r.fecha_turno}`]}</span>
                         ) : (
-                          <span className="text-gray-300">—</span>
+                          <span className="text-gray-500">—</span>
                         )}
                       </td>
                       <td className="py-1.5 px-2 text-center">
                         {popupTardanzas[`${r.id_agente}|${r.fecha_turno}`] ? (
                           <span className="text-red-600 font-bold text-sm">✓</span>
                         ) : (
-                          <span className="text-gray-300">—</span>
+                          <span className="text-gray-500">—</span>
                         )}
                       </td>
                     </tr>
@@ -931,7 +946,7 @@ export default function ConvocatoriasPage() {
             </div>
             {showFullList && (
               <div className="mt-4 border-t border-outline-variant/20 pt-4">
-                <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center justify-between gap-2 flex-wrap mb-2">
                   <span className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Cancelados</span>
                   <button
                     onClick={() => {
@@ -942,7 +957,7 @@ export default function ConvocatoriasPage() {
                         .map(r => r.agente);
                       navigator.clipboard.writeText([header, ...names].join('\n'));
                     }}
-                    className="px-3 py-1 rounded-lg text-[11px] font-bold bg-surface-container-high text-on-surface-variant hover:bg-surface-dim transition-colors border border-outline-variant/20"
+                    className="px-3 py-1 rounded-lg text-xs font-bold bg-surface-container-high text-on-surface-variant hover:bg-surface-dim transition-colors border border-outline-variant/20"
                   >
                     Copiar lista
                   </button>
@@ -960,7 +975,7 @@ export default function ConvocatoriasPage() {
                       </div>
                     ))}
                   {popupRows.filter(r => r.estado === 'cancelada').length === 0 && (
-                    <div className="py-4 text-xs text-gray-400 text-center italic">Sin residentes cancelados.</div>
+                    <div className="py-4 text-xs text-gray-500 text-center italic">Sin residentes cancelados.</div>
                   )}
                 </div>
               </div>
@@ -979,9 +994,9 @@ export default function ConvocatoriasPage() {
                 Siguiente
               </button>
             </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </ModalShell>
       <DisponibilidadModal
         open={showDisponibilidad}
         onClose={() => setShowDisponibilidad(false)}

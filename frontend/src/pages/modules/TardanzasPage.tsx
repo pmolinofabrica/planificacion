@@ -83,7 +83,7 @@ export default function TardanzasPage() {
   useEffect(() => { fetchData(); }, [fetchData]);
 
   const columns = useMemo<ColumnDef<TrackedRow<TardanzaDraft>>[]>(() => [
-    { id: 'id_tardanza', header: 'ID', cell: ({ row }) => <span className="text-gray-400 text-xs">{row.original.data.id_tardanza ?? '—'}</span>, size: 50 },
+    { id: 'id_tardanza', header: 'ID', cell: ({ row }) => <span className="text-gray-500 text-xs">{row.original.data.id_tardanza ?? '—'}</span>, size: 50 },
     editableColumn<TardanzaDraft>('id_agente', 'Agente', 'select', agentesOptions),
     editableColumn<TardanzaDraft>('fecha', 'Fecha', 'date'),
     editableColumn<TardanzaDraft>('accion_aplicada', 'Acción', 'select', [...ACCIONES]),
@@ -91,7 +91,7 @@ export default function TardanzasPage() {
     { id: 'created_at', header: 'Fecha de Carga', cell: ({ row }) => {
       const date = row.original.data.created_at;
       const isLatest = date && date === latestDate;
-      return <span className={`text-xs ${isLatest ? 'text-amber-600 font-bold' : 'text-gray-400'}`}>{date ?? '—'}</span>;
+      return <span className={`text-xs ${isLatest ? 'text-amber-600 font-bold' : 'text-gray-500'}`}>{date ?? '—'}</span>;
     }, size: 100 },
   ], [agentesOptions]);
 
@@ -99,7 +99,7 @@ export default function TardanzasPage() {
     <div>
       <div className="mb-4 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div><h2 className="text-xl font-bold text-gray-800">Registro de Tardanzas</h2></div>
-        <div className="flex gap-2 items-center">
+        <div className="flex gap-2 flex-wrap items-center">
           <label className="text-xs font-semibold text-gray-500">Año</label>
           <select
             value={filtroAnio}

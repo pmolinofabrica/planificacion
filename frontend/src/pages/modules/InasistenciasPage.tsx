@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
 import DataTable, { editableColumn } from '../../components/table/DataTable';
 import type { TrackedRow, BatchError } from '../../types/table';
@@ -57,7 +57,7 @@ export default function InasistenciasPage() {
   }, []);
 
   const columns: ColumnDef<TrackedRow<InasistenciaDraft>>[] = useMemo(() => [
-    { id: 'id_inasistencia', accessorFn: row => row.data.id_inasistencia, header: 'ID', cell: ({ row }) => <span className="text-gray-400 text-xs">{row.original.data.id_inasistencia ?? '—'}</span>, size: 50 },
+    { id: 'id_inasistencia', accessorFn: row => row.data.id_inasistencia, header: 'ID', cell: ({ row }) => <span className="text-gray-500 text-xs">{row.original.data.id_inasistencia ?? '—'}</span>, size: 50 },
     {
       id: 'id_agente',
       accessorFn: row => row.data.id_agente,
@@ -157,7 +157,7 @@ export default function InasistenciasPage() {
     <div>
       <div className="mb-4 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div><h2 className="text-xl font-bold text-gray-800">Inasistencias</h2></div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <select value={filtroMes} onChange={(e) => setFiltroMes(Number(e.target.value))} className="border border-gray-300 rounded px-3 py-1.5 text-sm bg-white">
             {Array.from({ length: 12 }, (_, i) => i + 1).map(m => <option key={m} value={m}>Mes {m}</option>)}
           </select>

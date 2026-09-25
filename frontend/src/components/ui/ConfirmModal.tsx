@@ -1,4 +1,7 @@
+import { ModalShell } from './ModalShell';
+
 interface ConfirmModalProps {
+  open: boolean;
   insertCount: number;
   updateCount: number;
   deleteCount: number;
@@ -8,6 +11,7 @@ interface ConfirmModalProps {
 }
 
 export default function ConfirmModal({
+  open,
   insertCount,
   updateCount,
   deleteCount,
@@ -18,8 +22,12 @@ export default function ConfirmModal({
   const total = insertCount + updateCount + deleteCount;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
+    <ModalShell
+      open={open}
+      onClose={onCancel}
+      overlayClassName="bg-black/50 flex items-center justify-center"
+      panelClassName="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4"
+    >
         <h2 className="text-lg font-bold text-gray-800 mb-4">Confirmar cambios</h2>
         <p className="text-gray-600 mb-4 text-sm">
           Se van a enviar <strong>{total} operaciones</strong> a la base de datos:
@@ -55,12 +63,11 @@ export default function ConfirmModal({
           <button
             onClick={onConfirm}
             disabled={loading}
-            className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors disabled:opacity-50"
+            className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-all disabled:opacity-50"
           >
             {loading ? 'Guardando...' : 'Confirmar y guardar'}
           </button>
         </div>
-      </div>
-    </div>
+    </ModalShell>
   );
 }

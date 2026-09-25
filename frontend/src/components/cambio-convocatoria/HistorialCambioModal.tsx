@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
 import { X, History, ArrowRight, User } from 'lucide-react';
 import { useHistorialCambio } from '../../hooks/useCambiosTurno';
 import { aFormatoFecha } from '../../lib/fecha-utils';
+import { ModalShell } from '../ui/ModalShell';
+import { Button } from '../ui/Button';
 
 interface HistorialCambioModalProps {
   isOpen: boolean;
@@ -13,28 +14,6 @@ const formatearFecha = aFormatoFecha;
 
 export default function HistorialCambioModal({ isOpen, idTransaccion, onClose }: HistorialCambioModalProps) {
   const { data: registros = [], isLoading } = useHistorialCambio(isOpen ? idTransaccion : null);
-  const modalRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); }
-    };
-    const handleClickOutside = (e: MouseEvent) => {
-      if (modalRef.current && !modalRef.current.contains(e.target as Node)) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
-    };
-    document.addEventListener('keydown', handleKeyDown, true);
-    document.addEventListener('mousedown', handleClickOutside, true);
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown, true);
-      document.removeEventListener('mousedown', handleClickOutside, true);
-    };
-  }, [isOpen]);
-
-  if (!isOpen) return null;
 
   const nombreResidente = (nombre: string | null, apellido: string | null, id: number | null) => {
     if (nombre && apellido) return `${nombre} ${apellido.charAt(0).toUpperCase()}.`;
@@ -42,11 +21,12 @@ export default function HistorialCambioModal({ isOpen, idTransaccion, onClose }:
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
-      <div
-        ref={modalRef}
-        className="bg-white rounded-xl shadow-2xl w-full max-w-lg m-4 max-h-[90vh] overflow-y-auto pointer-events-auto"
-      >
+    <ModalShell
+      open={isOpen}
+      onClose={onClose}
+      overlayClassName="flex items-center justify-center bg-black/30"
+      panelClassName="bg-white rounded-xl shadow-2xl w-full max-w-lg m-4 max-h-[90vh] overflow-y-auto"
+    >
         <div className="flex items-center justify-between px-6 py-4 border-b border-outline-variant/20">
           <div className="flex items-center gap-2">
             <History className="h-5 w-5 text-primary" />
@@ -81,7 +61,7 @@ export default function HistorialCambioModal({ isOpen, idTransaccion, onClose }:
                 <div key={r.id_hist} className="p-3 rounded-lg border border-outline-variant/20 bg-surface">
                   <div className="flex items-center gap-2 text-sm">
                     <span className="font-medium">Convocatoria #{r.id_convocatoria}</span>
-                    <span className="ml-auto text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium uppercase">
+                    <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium uppercase">
                       {r.tipo_cambio || 'cambio'}
                     </span>
                   </div>
@@ -97,7 +77,7 @@ export default function HistorialCambioModal({ isOpen, idTransaccion, onClose }:
                     </span>
                   </div>
                   {r.motivo && <p className="text-xs text-on-surface-variant mt-1">{r.motivo}</p>}
-                  <div className="flex items-center justify-between mt-2 text-[11px] text-on-surface-variant">
+                  <div className="flex items-center justify-between mt-2 text-xs text-on-surface-variant">
                     <span>{formatearFecha(r.fecha_cambio)}</span>
                     {r.usuario_responsable && <span>por {r.usuario_responsable}</span>}
                   </div>
@@ -108,14 +88,13 @@ export default function HistorialCambioModal({ isOpen, idTransaccion, onClose }:
         </div>
 
         <div className="flex justify-end px-6 py-4 border-t border-outline-variant/20">
-          <button
+          <Button
+            variant="outline"
             onClick={(e) => { e.stopPropagation(); onClose(); }}
-            className="px-4 py-2 rounded-lg border border-outline-variant/30 text-sm font-medium hover:bg-outline-variant/10 transition-colors"
           >
             Cerrar
-          </button>
+          </Button>
         </div>
-      </div>
-    </div>
+    </ModalShell>
   );
 }

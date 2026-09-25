@@ -29,38 +29,42 @@ import { UserSelector } from './components/tablero/UserSelector';
 import { STORAGE_USER_KEY } from './types/tablero';
 import type { TableroUser } from './types/tablero';
 import { supabase } from './lib/supabase';
+import { notify } from './lib/feedback';
+import { FeedbackLayer } from './components/ui/FeedbackLayer';
 
-type SimpleTab = 'certificados' | 'tardanzas' | 'inasistencias';
+const STORAGE_SIMPLE_KEY = 'molino:simpleMode';
 
 // Menu grouped according to requirements
 const NAV_GROUPS = [
   // Group 1: Planificación, Convocatoria, Cambio Convocatoria, Descansos, Saldos
   [
-    { path: '/planificacion', label: 'Planificación' },
-    { path: '/convocatorias', label: 'Convocatorias' },
-    { path: '/cambio-convocatoria', label: 'Cambio Convocatoria' },
-    { path: '/descansos', label: 'Descansos' },
-    { path: '/saldos', label: 'Saldos' },
+    { path: '/planificacion', label: 'Planificación', short: 'Planif.', icon: 'calendar_month' },
+    { path: '/convocatorias', label: 'Convocatorias', short: 'Convoc.', icon: 'event' },
+    { path: '/cambio-convocatoria', label: 'Cambio Convocatoria', short: 'Cambio', icon: 'swap_horiz' },
+    { path: '/descansos', label: 'Descansos', short: 'Descansos', icon: 'beach_access' },
+    { path: '/saldos', label: 'Saldos', short: 'Saldos', icon: 'hourglass_bottom' },
   ],
   // Group 2: Inasistencias, Certificados, Tardanzas, Cert. Serv.
   [
-    { path: '/inasistencias', label: 'Inasistencias' },
-    { path: '/certificados', label: 'Certificados' },
-    { path: '/tardanzas', label: 'Tardanzas' },
-    { path: '/cert_serv', label: 'Cert. Serv.' },
+    { path: '/inasistencias', label: 'Inasistencias', short: 'Inasist.', icon: 'personal_injury' },
+    { path: '/certificados', label: 'Certificados', short: 'Certif.', icon: 'verified' },
+    { path: '/tardanzas', label: 'Tardanzas', short: 'Tardanzas', icon: 'schedule' },
+    { path: '/cert_serv', label: 'Cert. Serv.', short: 'Cert. Serv.', icon: 'workspace_premium' },
   ],
   // Group 3: Capacitaciones, Caps Disp
   [
-    { path: '/capacitaciones', label: 'Capacitaciones' },
-    { path: '/caps_dispositivos', label: 'Caps Disp' },
+    { path: '/capacitaciones', label: 'Capacitaciones', short: 'Capac.', icon: 'school' },
+    { path: '/caps_dispositivos', label: 'Caps Disp', short: 'Caps Disp', icon: 'devices' },
   ],
   // Group 4: Dispositivos, Turnos, Agentes
   [
-    { path: '/dispositivos', label: 'Dispositivos' },
-    { path: '/turnos', label: 'Turnos' },
-    { path: '/agentes', label: 'DATOS PERSONALES' },
+    { path: '/dispositivos', label: 'Dispositivos', short: 'Disposit.', icon: 'devices_other' },
+    { path: '/turnos', label: 'Turnos', short: 'Turnos', icon: 'access_time' },
+    { path: '/agentes', label: 'DATOS PERSONALES', short: 'Datos', icon: 'badge' },
   ],
 ];
+
+const BOTTOM_SECTIONS = NAV_GROUPS.flat();
 
 // Modules available in the side panel. Add new entries here to surface more panels.
 const MODULES = [
@@ -71,20 +75,11 @@ const MODULES = [
 
 type ModuleId = typeof MODULES[number]['id'];
 
-function SimpleModeView({ activeTab }: { activeTab: SimpleTab }) {
-  switch (activeTab) {
-    case 'certificados': return <CertificadosPanel />;
-    case 'tardanzas': return <TardanzasPanel />;
-    case 'inasistencias': return <InasistenciasPanel />;
-  }
-}
-
 function Layout({ children }: { children: React.ReactNode }) {
   const { session } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [openModule, setOpenModule] = useState<ModuleId | null>(null);
-  const [simpleMode, setSimpleMode] = useState(false);
-  const [activeSimpleTab, setActiveSimpleTab] = useState<SimpleTab>('certificados');
+  const [simpleMode, setSimpleMode] = useState(() => localStorage.getItem(STORAGE_SIMPLE_KEY) === '1');
   const [nuevaTarjetaOpen, setNuevaTarjetaOpen] = useState(false);
   const [tableroUser, setTableroUser] = useState<TableroUser | null>(() => {
     const saved = localStorage.getItem(STORAGE_USER_KEY) as TableroUser | null;
@@ -92,6 +87,10 @@ function Layout({ children }: { children: React.ReactNode }) {
   });
   const { crearItem } = useTablero('planificacion');
   const navigate = useNavigate();
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_SIMPLE_KEY, simpleMode ? '1' : '0');
+  }, [simpleMode]);
 
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_USER_KEY) as TableroUser | null;
@@ -102,8 +101,8 @@ function Layout({ children }: { children: React.ReactNode }) {
 
   const handleCrearTarjeta = async (titulo: string, descripcion: string, tipo: any, autor: any) => {
     const { error } = await crearItem(titulo, descripcion, tipo, autor);
-    if (error) alert(`Error: ${error}`);
-    else alert('Tarjeta creada');
+    if (error) notify(`Error al crear: ${error}`, 'error');
+    else notify('Tarjeta creada', 'success');
   };
 
   const handleLogout = async () => {
@@ -119,26 +118,24 @@ function Layout({ children }: { children: React.ReactNode }) {
   };
   const closeModulePanel = () => setOpenModule(null);
 
-  const SIMPLE_TABS: { id: SimpleTab; label: string; icon: string }[] = [
-    { id: 'certificados', label: 'Certificados', icon: 'verified' },
-    { id: 'tardanzas', label: 'Tardanzas', icon: 'schedule' },
-    { id: 'inasistencias', label: 'Inasistencias', icon: 'personal_injury' },
-  ];
-
   return (
     <div className="min-h-screen bg-surface font-body text-on-surface">
       {/* Mobile Top Navigation Bar */}
-      <header className="md:hidden fixed top-0 left-0 right-0 h-16 bg-on-secondary-fixed z-30 flex items-center px-4 shadow-md">
+      <header
+        className={`fixed top-0 left-0 right-0 h-16 bg-on-secondary-fixed z-30 flex items-center px-4 shadow-md ${
+          simpleMode ? '' : 'md:hidden'
+        }`}
+      >
         <button
           onClick={toggleSidebar}
-          className="text-white p-2 hover:bg-white/10 rounded-lg transition-colors focus:outline-none"
+          className="text-white p-2 hover:bg-white/10 rounded-lg transition-colors focus-visible:ring-2 focus-visible:ring-white/80"
           aria-label="Abrir menú"
         >
           <span className="material-symbols-outlined">menu</span>
         </button>
           <div className="ml-4 flex flex-col">
             <h1 className="text-white text-lg font-black leading-tight">El Molino</h1>
-            <p className="font-headline uppercase tracking-widest text-[8px] font-bold text-slate-400">Residencias</p>
+            <p className="font-headline uppercase tracking-wide text-xs font-semibold text-white/70">Residencias</p>
           </div>
           <div className="ml-auto flex items-center gap-1">
             <button
@@ -159,28 +156,28 @@ function Layout({ children }: { children: React.ReactNode }) {
         </header>
 
       {/* Mobile Sidebar Overlay */}
-      {isSidebarOpen && (
-        <div
-          className="md:hidden fixed inset-0 bg-black/50 z-40 transition-opacity"
-          onClick={closeSidebar}
-          aria-hidden="true"
-        />
-      )}
+      <div
+        className={`fixed inset-0 bg-black/50 z-40 transition-opacity duration-300 ${
+          isSidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        } ${simpleMode ? '' : 'md:hidden'}`}
+        onClick={closeSidebar}
+        aria-hidden="true"
+      />
 
       {/* Sidebar (Dark Premium) */}
       <aside
-        className={`fixed left-0 top-0 h-screen w-64 z-50 bg-on-secondary-fixed flex flex-col py-6 gap-2 shadow-2xl transition-transform duration-300 ease-in-out md:translate-x-0 ${
-          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        className={`fixed left-0 top-0 h-screen w-64 z-50 bg-on-secondary-fixed flex flex-col py-6 gap-2 shadow-2xl transition-[transform,visibility] duration-300 ease-in-out ${
+          isSidebarOpen ? 'translate-x-0' : 'invisible -translate-x-full'
+        } ${simpleMode ? '' : 'md:translate-x-0 md:visible'}`}
       >
         <div className="px-6 mb-6 flex justify-between items-center md:block">
           <div>
             <h1 className="text-white text-2xl font-black">El Molino</h1>
-            <p className="font-headline uppercase tracking-widest text-[10px] font-bold text-slate-400 mt-1">Residencias Culturales</p>
+            <p className="font-headline uppercase tracking-wide text-xs font-semibold text-white/70 mt-1">Residencias Culturales</p>
           </div>
           <button
             onClick={closeSidebar}
-            className="md:hidden text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors"
+            className="md:hidden text-white/70 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors"
           >
             <span className="material-symbols-outlined text-xl">close</span>
           </button>
@@ -190,22 +187,22 @@ function Layout({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-1 mx-2">
             <button
               onClick={() => { navigate('/tablero'); closeSidebar(); }}
-              className="flex-1 flex items-center justify-center px-3 py-2.5 rounded-lg transition-all duration-200 text-slate-400 hover:text-white hover:bg-white/5 active:translate-x-0.5"
+              className="flex-1 flex items-center justify-center px-3 py-2.5 rounded-lg transition-all duration-200 text-white/70 hover:text-white hover:bg-white/5 active:translate-x-0.5"
               title="Ir al Tablero"
             >
               <ClipboardList className="w-4 h-4" />
             </button>
             <button
               onClick={() => { setNuevaTarjetaOpen(true); closeSidebar(); }}
-              className="flex-1 flex items-center justify-center px-3 py-2.5 rounded-lg transition-all duration-200 text-slate-400 hover:text-white hover:bg-white/5 active:translate-x-0.5"
+              className="flex-1 flex items-center justify-center px-3 py-2.5 rounded-lg transition-all duration-200 text-white/70 hover:text-white hover:bg-white/5 active:translate-x-0.5"
               title="Nueva tarjeta"
             >
               <MessageSquarePlus className="w-4 h-4" />
             </button>
             <button
-              onClick={() => { setSimpleMode(!simpleMode); setOpenModule(null); setActiveSimpleTab('certificados'); closeSidebar(); }}
+              onClick={() => { setSimpleMode((v) => !v); setOpenModule(null); closeSidebar(); }}
               className={`flex-1 flex items-center justify-center px-3 py-2.5 rounded-lg transition-all duration-200 active:translate-x-0.5 ${
-                simpleMode ? 'text-white bg-primary/20' : 'text-slate-400 hover:text-white hover:bg-white/5'
+                simpleMode ? 'text-white bg-primary/20' : 'text-white/70 hover:text-white hover:bg-white/5'
               }`}
               title={simpleMode ? 'Salir Modo Simple' : 'Modo Simple'}
             >
@@ -213,7 +210,7 @@ function Layout({ children }: { children: React.ReactNode }) {
             </button>
             <button
               onClick={() => { handleLogout(); closeSidebar(); }}
-              className="flex-1 flex items-center justify-center px-3 py-2.5 rounded-lg transition-all duration-200 text-slate-400 hover:text-white hover:bg-white/5 active:translate-x-0.5"
+              className="flex-1 flex items-center justify-center px-3 py-2.5 rounded-lg transition-all duration-200 text-white/70 hover:text-white hover:bg-white/5 active:translate-x-0.5"
               title="Cerrar Sesión"
             >
               <LogOut className="w-4 h-4" />
@@ -221,123 +218,113 @@ function Layout({ children }: { children: React.ReactNode }) {
           </div>
         </div>
 
-        {!simpleMode && (
-          <>
-            <div className="px-4 mb-4">
-              <p className="font-headline uppercase tracking-widest text-[9px] font-bold text-slate-500 mb-2 px-2">Paneles</p>
-              <div className="flex flex-col gap-1">
-                {MODULES.map((m) => {
-                  const active = openModule === m.id;
-                  return (
-                    <button
-                      key={m.id}
-                      onClick={() => openModulePanel(m.id)}
-                      className={`flex items-center gap-3 px-4 py-3 mx-2 rounded-lg transition-all duration-200 active:translate-x-1 ${
-                        active
-                          ? 'text-white bg-gradient-to-r from-primary to-primary-container shadow-md'
-                          : 'text-slate-400 hover:text-white hover:bg-white/5'
-                      }`}
-                    >
-                      <span className="material-symbols-outlined text-base">{m.icon}</span>
-                      <span className="font-headline uppercase tracking-widest text-[10px] font-bold">{m.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+        <div className="px-4 mb-4">
+          <p className="font-headline uppercase tracking-wide text-xs font-semibold text-white/60 mb-2 px-2">Paneles</p>
+          <div className="flex flex-col gap-1">
+            {MODULES.map((m) => {
+              const active = openModule === m.id;
+              return (
+                <button
+                  key={m.id}
+                  onClick={() => openModulePanel(m.id)}
+                  className={`flex items-center gap-3 px-4 py-3 mx-2 rounded-lg transition-all duration-200 active:translate-x-1 ${
+                    active
+                      ? 'text-white bg-gradient-to-r from-primary to-primary-container shadow-md'
+                      : 'text-white/70 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-base">{m.icon}</span>
+                  <span className="font-headline uppercase tracking-wide text-xs font-semibold">{m.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
-            <nav className="flex-1 overflow-y-auto no-scrollbar">
-              <div className="space-y-4">
-                {NAV_GROUPS.map((group, groupIdx) => (
-                  <div
-                    key={groupIdx}
-                    className={`flex flex-col gap-1 pb-4 ${
-                      groupIdx !== NAV_GROUPS.length - 1 ? 'border-b border-white/10' : ''
-                    }`}
+        <nav className="flex-1 overflow-y-auto no-scrollbar">
+          <div className="space-y-4">
+            {NAV_GROUPS.map((group, groupIdx) => (
+              <div
+                key={groupIdx}
+                className={`flex flex-col gap-1 pb-4 ${
+                  groupIdx !== NAV_GROUPS.length - 1 ? 'border-b border-white/10' : ''
+                }`}
+              >
+                {group.map((item) => (
+                  <NavLink
+                    key={item.path}
+                    to={item.path}
+                    onClick={closeSidebar}
+                    className={({ isActive }) =>
+                      `flex items-center gap-3 px-4 py-3 mx-2 rounded-lg transition-all duration-200 active:translate-x-1 ${
+                        isActive
+                          ? 'text-white bg-gradient-to-r from-primary to-primary-container shadow-md'
+                          : 'text-white/70 hover:text-white hover:bg-white/5'
+                      }`
+                    }
                   >
-                    {group.map((item) => (
-                      <NavLink
-                        key={item.path}
-                        to={item.path}
-                        onClick={closeSidebar}
-                        className={({ isActive }) =>
-                          `flex items-center gap-3 px-4 py-3 mx-2 rounded-lg transition-all duration-200 active:translate-x-1 ${
-                            isActive
-                              ? 'text-white bg-gradient-to-r from-primary to-primary-container shadow-md'
-                              : 'text-slate-400 hover:text-white hover:bg-white/5'
-                          }`
-                        }
-                      >
-                        <span className="font-headline uppercase tracking-widest text-[10px] font-bold">{item.label}</span>
-                      </NavLink>
-                    ))}
-                  </div>
+                    <span className="material-symbols-outlined text-base">{item.icon}</span>
+                    <span className="font-headline uppercase tracking-wide text-xs font-semibold">{item.label}</span>
+                  </NavLink>
                 ))}
               </div>
-            </nav>
-          </>
-        )}
-
-        {simpleMode && (
-          <nav className="flex-1 overflow-y-auto no-scrollbar px-4">
-            <p className="font-headline uppercase tracking-widest text-[9px] font-bold text-slate-500 mb-2 px-2">Paneles Rápidos</p>
-            <div className="flex flex-col gap-1">
-              {SIMPLE_TABS.map((t) => {
-                const active = activeSimpleTab === t.id;
-                return (
-                  <button
-                    key={t.id}
-                    onClick={() => { setActiveSimpleTab(t.id); setIsSidebarOpen(false); }}
-                    className={`flex items-center gap-3 px-4 py-3 mx-2 rounded-lg transition-all duration-200 active:translate-x-1 ${
-                      active
-                        ? 'text-white bg-gradient-to-r from-primary to-primary-container shadow-md'
-                        : 'text-slate-400 hover:text-white hover:bg-white/5'
-                    }`}
-                  >
-                    <span className="material-symbols-outlined text-base">{t.icon}</span>
-                    <span className="font-headline uppercase tracking-widest text-[10px] font-bold">{t.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </nav>
-        )}
+            ))}
+          </div>
+        </nav>
 
       </aside>
 
       {/* Main content (scrolling area) */}
-      <main className={`md:ml-64 ${simpleMode ? 'pt-0' : 'pt-16 md:pt-0'} h-screen overflow-y-auto flex flex-col transition-all duration-300`}>
-        <div className="p-4 md:p-8 flex-1 flex flex-col mx-auto w-full max-w-7xl">
-          {simpleMode ? (
-            <>
-              <div className="flex gap-1 mb-4 border-b border-outline-variant/20 overflow-x-auto no-scrollbar">
-                {SIMPLE_TABS.map((t) => {
-                  const active = activeSimpleTab === t.id;
-                  return (
-                    <button
-                      key={t.id}
-                      onClick={() => setActiveSimpleTab(t.id)}
-                      className={`px-4 py-2.5 text-xs font-bold font-headline uppercase tracking-wider whitespace-nowrap transition-all border-b-2 -mb-px ${
-                        active
-                          ? 'text-primary border-primary'
-                          : 'text-on-surface-variant border-transparent hover:text-on-surface hover:border-outline-variant'
-                      }`}
-                    >
-                      <span className="material-symbols-outlined text-base mr-1.5 align-middle">{t.icon}</span>
-                      {t.label}
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="flex-1">
-                <SimpleModeView activeTab={activeSimpleTab} />
-              </div>
-            </>
-          ) : (
-            children
-          )}
+      <main
+        className={`${
+          simpleMode ? 'pt-16 pb-16' : 'md:ml-64 pt-16 md:pt-0'
+        } h-screen overflow-y-auto flex flex-col transition-[padding] duration-300`}
+      >
+        <div
+          className={`${
+            simpleMode ? 'p-3 sm:p-4 md:p-6' : 'p-4 md:p-8'
+          } flex-1 flex flex-col mx-auto w-full max-w-7xl`}
+        >
+          {children}
         </div>
       </main>
+
+      {/* Bottom navigation (Modo Simple) */}
+      {simpleMode && (
+        <nav
+          aria-label="Navegación rápida"
+          className="fixed bottom-0 left-0 right-0 z-30 h-16 bg-on-secondary-fixed border-t border-white/10 flex items-stretch overflow-x-auto no-scrollbar shadow-[0_-4px_12px_rgba(0,0,0,0.25)]"
+        >
+          <button
+            type="button"
+            onClick={toggleSidebar}
+            aria-label="Abrir menú"
+            className="shrink-0 w-16 flex flex-col items-center justify-center gap-0.5 text-white/70 hover:text-white hover:bg-white/10 transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-white/80"
+          >
+            <span className="material-symbols-outlined text-xl">menu</span>
+            <span className="font-headline uppercase tracking-wider text-xs font-semibold leading-none">Menú</span>
+          </button>
+          {BOTTOM_SECTIONS.map((item) => (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              onClick={closeSidebar}
+              className={({ isActive }) =>
+                `shrink-0 min-w-[68px] px-2 flex flex-col items-center justify-center gap-0.5 transition-colors ${
+                  isActive
+                    ? 'text-white bg-primary/25'
+                    : 'text-white/70 hover:text-white hover:bg-white/5'
+                }`
+              }
+            >
+              <span className="material-symbols-outlined text-xl">{item.icon}</span>
+              <span className="font-headline uppercase tracking-wider text-xs font-semibold leading-none whitespace-nowrap">
+                {item.short}
+              </span>
+            </NavLink>
+          ))}
+        </nav>
+      )}
 
       <ModuleDrawer
         isOpen={openModule === 'certificados'}
@@ -376,6 +363,7 @@ function Layout({ children }: { children: React.ReactNode }) {
 function App() {
   return (
     <Router>
+      <FeedbackLayer />
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/tablero" element={<TableroPage />} />

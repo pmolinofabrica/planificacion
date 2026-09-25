@@ -1,5 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
+import { ModalShell } from '../ui/ModalShell';
+import { Button } from '../ui/Button';
+import { Card } from '../ui/Card';
 
 type InasistenciaRaw = {
   id_agente: number;
@@ -266,58 +269,62 @@ export default function InasistenciasPanel() {
   };
 
   return (
-    <div className="p-3 bg-surface-container-lowest/70 backdrop-blur-md rounded-xl border border-outline-variant/10 shadow-sm">
+    <Card variant="glass" className="p-3">
       <div className="flex items-center justify-between mb-3 gap-2">
         <div className="text-xs font-bold text-primary font-headline uppercase tracking-wider flex items-center gap-2">
           Inasistencias {new Date().getFullYear()} ({rows.length} residentes)
-          {loading && <span className="text-[10px] text-slate-400 italic font-normal">cargando…</span>}
+          {loading && <span className="text-xs text-on-surface-variant italic font-normal">cargando…</span>}
         </div>
         <div className="flex items-center gap-2">
           <input
             type="date"
             value={selectedDate}
             onChange={(e) => setSelectedDate(e.target.value)}
-            className="bg-white border border-outline-variant/30 rounded-lg px-2 py-1.5 text-[11px] font-mono"
+            className="bg-white border border-outline-variant/30 rounded-lg px-2 py-1.5 text-xs font-mono"
           />
-          <button
+          <Button
+            variant="tonal"
+            size="sm"
             onClick={fetchData}
             disabled={loading}
-            className="bg-primary/10 text-primary px-3 py-1.5 rounded-lg text-[10px] font-bold font-headline uppercase tracking-wider hover:bg-primary/20 transition-all active:scale-95 disabled:opacity-50"
           >
             Refrescar
-          </button>
+          </Button>
         </div>
       </div>
 
-      <div className="text-[10px] font-semibold text-on-surface-variant mb-2">Resumen diario {cardLoading && <span className="italic font-normal">cargando…</span>}</div>
-      <div className="flex gap-3 mb-3">
-        <div
+      <div className="text-xs font-semibold text-on-surface-variant mb-2">Resumen diario {cardLoading && <span className="italic font-normal">cargando…</span>}</div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+        <button
+          type="button"
           onClick={() => openCardPopup('Justificadas')}
-          className="flex-1 px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-200 text-center cursor-pointer hover:bg-emerald-100 transition-colors active:scale-[0.98]"
+          className="w-full px-3 py-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-center cursor-pointer hover:bg-emerald-100 transition-all active:scale-[0.98]"
         >
-          <div className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">Justificadas</div>
+          <div className="text-xs font-bold text-emerald-700 uppercase tracking-wider">Justificadas</div>
           <div className="text-lg font-black text-emerald-800">{cardJustificadas}</div>
-        </div>
-        <div
+        </button>
+        <button
+          type="button"
           onClick={() => openCardPopup('Injustificadas (G. Descuento)')}
-          className="flex-1 px-3 py-2 rounded-lg bg-red-50 border border-red-200 text-center cursor-pointer hover:bg-red-100 transition-colors active:scale-[0.98]"
+          className="w-full px-3 py-2.5 rounded-lg bg-red-50 border border-red-200 text-center cursor-pointer hover:bg-red-100 transition-all active:scale-[0.98]"
         >
-          <div className="text-[10px] font-bold text-red-700 uppercase tracking-wider">Injustificadas (G. Descuento)</div>
+          <div className="text-xs font-bold text-red-700 uppercase tracking-wider">Injustificadas (G. Descuento)</div>
           <div className="text-lg font-black text-red-800">{cardInjustificadas}</div>
-        </div>
-        <div
+        </button>
+        <button
+          type="button"
           onClick={() => openCardPopup('6ta Tardanza')}
-          className="flex-1 px-3 py-2 rounded-lg bg-orange-50 border border-orange-200 text-center cursor-pointer hover:bg-orange-100 transition-colors active:scale-[0.98]"
+          className="w-full px-3 py-2.5 rounded-lg bg-orange-50 border border-orange-200 text-center cursor-pointer hover:bg-orange-100 transition-all active:scale-[0.98]"
         >
-          <div className="text-[10px] font-bold text-orange-700 uppercase tracking-wider">6ta Tardanza</div>
+          <div className="text-xs font-bold text-orange-700 uppercase tracking-wider">6ta Tardanza</div>
           <div className="text-lg font-black text-orange-800">{card6ta}</div>
-        </div>
+        </button>
       </div>
 
       {error && <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded mb-3 text-xs">{error}</div>}
 
       {!loading && rows.length === 0 && !error && (
-        <div className="text-xs text-slate-400 italic py-2">No hay inasistencias registradas este año.</div>
+        <div className="text-xs text-on-surface-variant italic py-2">No hay inasistencias registradas este año.</div>
       )}
 
       {rows.length > 0 && (
@@ -345,7 +352,7 @@ export default function InasistenciasPanel() {
                 <tr
                   key={r.id_agente}
                   onClick={() => openPopup(r)}
-                  className="border-b border-outline-variant/10 hover:bg-primary/5 transition-colors cursor-pointer active:scale-[0.99]"
+                  className="border-b border-outline-variant/10 hover:bg-primary/5 transition-[background-color,transform] cursor-pointer active:scale-[0.99]"
                 >
                   <td className="py-1.5 px-2 font-medium truncate">{r.nombre}</td>
                   <td className="py-1.5 px-2 text-center font-mono font-bold text-emerald-600">{r.justificadas > 0 ? r.justificadas : '—'}</td>
@@ -371,7 +378,7 @@ export default function InasistenciasPanel() {
                     return cols;
                   })}
                   <td className="py-1.5 px-2 text-center font-mono font-bold">
-                    <span className={r.sixth_tardanza > 0 ? 'text-orange-600' : 'text-gray-400'}>
+                    <span className={r.sixth_tardanza > 0 ? 'text-orange-600' : 'text-gray-500'}>
                       {r.sixth_tardanza > 0 ? r.sixth_tardanza : '—'}
                     </span>
                   </td>
@@ -382,31 +389,30 @@ export default function InasistenciasPanel() {
         </div>
       )}
 
-      {popupAgent && (
-        <div
-          className="fixed inset-0 z-50 flex items-start justify-center pt-10 bg-black/30 backdrop-blur-sm"
-          onClick={closePopup}
-        >
-          <div
-            className="bg-white rounded-xl shadow-2xl border border-outline-variant/20 w-full max-w-lg mx-4 max-h-[70vh] flex flex-col"
-            onClick={(e) => e.stopPropagation()}
-          >
+      <ModalShell
+        open={!!popupAgent}
+        onClose={closePopup}
+        overlayClassName="flex items-start justify-center pt-10 bg-black/30 backdrop-blur-sm"
+        panelClassName="bg-white rounded-xl shadow-2xl border border-outline-variant/20 w-full max-w-lg mx-4 max-h-[70vh] flex flex-col"
+      >
+        {popupAgent && (
+          <>
             <div className="flex items-center justify-between px-4 py-3 border-b border-outline-variant/20">
               <h3 className="font-headline uppercase tracking-wider text-xs font-bold text-primary">
                 Inasistencias — {popupAgent.nombre}
               </h3>
               <button
                 onClick={closePopup}
-                className="text-gray-400 hover:text-gray-600 text-xl leading-none p-1"
+                className="text-gray-500 hover:text-gray-600 text-xl leading-none p-1 transition-colors"
               >
                 &times;
               </button>
             </div>
             <div className="overflow-y-auto flex-1 p-3">
               {popupLoading ? (
-                <div className="text-xs text-slate-400 italic py-4 text-center">Cargando…</div>
+                <div className="text-xs text-on-surface-variant italic py-4 text-center">Cargando…</div>
               ) : popupRows.length === 0 ? (
-                <div className="text-xs text-slate-400 italic py-4 text-center">Sin inasistencias registradas.</div>
+                <div className="text-xs text-on-surface-variant italic py-4 text-center">Sin inasistencias registradas.</div>
               ) : (
                 <table className="w-full text-left text-xs">
                   <thead className="sticky top-0 bg-white z-10">
@@ -436,30 +442,27 @@ export default function InasistenciasPanel() {
                 </table>
               )}
             </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </ModalShell>
 
-      {cardPopupOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-start justify-center pt-10 bg-black/30 backdrop-blur-sm"
-          onClick={closeCardPopup}
-        >
-          <div
-            className="bg-white rounded-xl shadow-2xl border border-outline-variant/20 w-full max-w-lg mx-4 max-h-[70vh] flex flex-col"
-            onClick={(e) => e.stopPropagation()}
-          >
+      <ModalShell
+        open={cardPopupOpen}
+        onClose={closeCardPopup}
+        overlayClassName="flex items-start justify-center pt-10 bg-black/30 backdrop-blur-sm"
+        panelClassName="bg-white rounded-xl shadow-2xl border border-outline-variant/20 w-full max-w-lg mx-4 max-h-[70vh] flex flex-col"
+      >
             <div className="flex items-center justify-between px-4 py-3 border-b border-outline-variant/20">
               <h3 className="font-headline uppercase tracking-wider text-xs font-bold text-primary">
                 {cardPopupTitle} — {selectedDate}
               </h3>
-              <button onClick={closeCardPopup} className="text-gray-400 hover:text-gray-600 text-xl leading-none p-1">&times;</button>
+              <button onClick={closeCardPopup} className="text-gray-500 hover:text-gray-600 text-xl leading-none p-1 transition-colors">&times;</button>
             </div>
             <div className="overflow-y-auto flex-1 p-3">
               {cardPopupLoading ? (
-                <div className="text-xs text-slate-400 italic py-4 text-center">Cargando…</div>
+                <div className="text-xs text-on-surface-variant italic py-4 text-center">Cargando…</div>
               ) : cardPopupRows.length === 0 ? (
-                <div className="text-xs text-slate-400 italic py-4 text-center">Sin registros.</div>
+                <div className="text-xs text-on-surface-variant italic py-4 text-center">Sin registros.</div>
               ) : (
                 <table className="w-full text-left text-xs">
                   <thead className="sticky top-0 bg-white z-10">
@@ -489,9 +492,7 @@ export default function InasistenciasPanel() {
                 </table>
               )}
             </div>
-          </div>
-        </div>
-      )}
-    </div>
+      </ModalShell>
+    </Card>
   );
 }

@@ -40,7 +40,7 @@ export function CommentThread({ comentarios, currentUser, onAddComment }: Commen
               <span className="text-xs font-bold text-on-surface">
                 {c.autor_nombre}
               </span>
-              <span className="text-[10px] text-on-surface-variant">
+              <span className="text-xs text-on-surface-variant">
                 {new Date(c.created_at).toLocaleDateString('es-AR', {
                   day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
                 })}

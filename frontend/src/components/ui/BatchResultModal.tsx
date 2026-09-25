@@ -1,6 +1,8 @@
 import type { BatchError } from '../../types/table';
+import { ModalShell } from './ModalShell';
 
 interface BatchResultModalProps {
+  open: boolean;
   successCount: number;
   failures: BatchError[];
   onRetry: (failures: BatchError[]) => void;
@@ -8,6 +10,7 @@ interface BatchResultModalProps {
 }
 
 export default function BatchResultModal({
+  open,
   successCount,
   failures,
   onRetry,
@@ -16,8 +19,12 @@ export default function BatchResultModal({
   const hasFailures = failures.length > 0;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl p-6 max-w-xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+    <ModalShell
+      open={open}
+      onClose={onClose}
+      overlayClassName="bg-black/50 flex items-center justify-center"
+      panelClassName="bg-white rounded-lg shadow-xl p-6 max-w-xl w-full mx-4 max-h-[80vh] overflow-y-auto"
+    >
         <h2 className="text-lg font-bold text-gray-800 mb-3">Resultado del guardado</h2>
 
         {successCount > 0 && (
@@ -61,7 +68,6 @@ export default function BatchResultModal({
             Cerrar
           </button>
         </div>
-      </div>
-    </div>
+    </ModalShell>
   );
 }

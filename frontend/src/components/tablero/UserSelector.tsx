@@ -13,7 +13,7 @@ export function UserSelector({ currentUser, onSelect }: UserSelectorProps) {
         {currentUser ? 'Conectado:' : '¿Quién eres?'}
       </span>
       <select
-        className="bg-surface-container-high border border-outline-variant/20 rounded-md px-2 py-1 text-sm font-bold text-on-surface outline-none hover:bg-surface-container-highest cursor-pointer"
+        className="bg-surface-container-high border border-outline-variant/20 rounded-md px-2.5 py-1.5 text-sm font-bold text-on-surface hover:bg-surface-container-highest cursor-pointer transition-colors"
         value={currentUser || ''}
         onChange={(e) => {
           const user = e.target.value as TableroUser;
@@ -34,7 +34,7 @@ export function UserSelector({ currentUser, onSelect }: UserSelectorProps) {
             localStorage.removeItem(STORAGE_USER_KEY);
             onSelect(null as any);
           }}
-          className="text-[10px] font-medium text-on-surface-variant hover:text-error transition-colors ml-1"
+          className="text-xs font-medium text-on-surface-variant hover:text-error transition-colors ml-1 p-1.5 -m-1 rounded-md hover:bg-error-container/40"
         >
           ✕
         </button>

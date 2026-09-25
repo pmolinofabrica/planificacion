@@ -21,11 +21,11 @@ export function TableroColumn({ estado, label, items, onCardClick }: TableroColu
       <div className={`flex items-center justify-between gap-1.5 mb-2 px-2.5 py-1.5 rounded-lg ${col.headerBg}`}>
         <div className="flex items-center gap-1.5 min-w-0">
           <Icon className="w-3.5 h-3.5 text-on-surface/60 shrink-0" />
-          <span className="text-[11px] font-bold text-on-surface/70 uppercase tracking-wider font-headline truncate">
+          <span className="text-xs font-bold text-on-surface/70 uppercase tracking-wider font-headline truncate">
             {col.shortLabel}
           </span>
         </div>
-        <span className="text-[10px] font-semibold text-on-surface/50 bg-surface/50 px-1.5 py-0.5 rounded-full shrink-0">
+        <span className="text-xs font-semibold text-on-surface/50 bg-surface/50 px-1.5 py-0.5 rounded-full shrink-0">
           {items.length}
         </span>
       </div>
@@ -35,7 +35,7 @@ export function TableroColumn({ estado, label, items, onCardClick }: TableroColu
         ))}
         {items.length === 0 && (
           <div className="flex items-center justify-center h-16 border-2 border-dashed border-outline-variant/20 rounded-lg">
-            <span className="text-[10px] text-on-surface-variant/50">Vacío</span>
+            <span className="text-xs text-on-surface-variant/50">Vacío</span>
           </div>
         )}
       </div>

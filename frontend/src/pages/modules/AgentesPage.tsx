@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
 import DataTable, { editableColumn } from '../../components/table/DataTable';
 import type { TrackedRow } from '../../types/table';
@@ -8,7 +8,7 @@ import type { Agente } from '../../types/database';
 type AgenteDraft = Omit<Agente, 'id_agente'> & { id_agente?: number };
 
 const columns: ColumnDef<TrackedRow<AgenteDraft>>[] = [
-  { id: 'id_agente', header: 'ID', cell: ({ row }) => <span className="text-gray-400 text-xs">{row.original.data.id_agente ?? '—'}</span>, size: 50 },
+  { id: 'id_agente', header: 'ID', cell: ({ row }) => <span className="text-gray-500 text-xs">{row.original.data.id_agente ?? '—'}</span>, size: 50 },
   editableColumn<AgenteDraft>('nombre', 'Nombre'),
   editableColumn<AgenteDraft>('apellido', 'Apellido'),
   editableColumn<AgenteDraft>('dni', 'DNI'),
@@ -60,7 +60,7 @@ export default function AgentesPage() {
   }, [fetchAgentes]);
 
   if (loading && data.length === 0) {
-    return <div className="flex items-center justify-center h-48 text-gray-400">Cargando agentes...</div>;
+    return <div className="flex items-center justify-center h-48 text-gray-500">Cargando agentes...</div>;
   }
 
   return (

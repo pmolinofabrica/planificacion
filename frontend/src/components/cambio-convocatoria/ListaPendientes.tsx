@@ -9,9 +9,12 @@ import { aFormatoFecha } from '../../lib/fecha-utils';
 import { obtenerUsuarioActual } from '../../lib/auth-utils';
 import { crearBorradorParaTarjeta } from '../../lib/email-utils';
 import type { TemplateVars, ModoCorreo } from '../../lib/email-utils';
+import { notify, confirmDialog } from '../../lib/feedback';
 import EditarSolicitudModal from './EditarSolicitudModal';
 import HistorialCambioModal from './HistorialCambioModal';
 import EmailDraftModal from './EmailDraftModal';
+import { ModalShell } from '../ui/ModalShell';
+import { Button } from '../ui/Button';
 
 const estadoColor: Record<string, string> = {
   PENDIENTE: 'bg-yellow-100 text-yellow-800 border-yellow-300',
@@ -107,13 +110,13 @@ export default function ListaPendientes() {
         usuario,
       });
       if (resultado.ok) {
-        alert(`Borrador ${modo === 'confirmado' ? 'confirmado' : 'pendiente'} creado en Gmail correctamente.`);
+        notify(`Borrador ${modo === 'confirmado' ? 'confirmado' : 'pendiente'} creado en Gmail correctamente.`, 'success');
         qc.invalidateQueries({ queryKey: ['borradores-estado'] });
       } else {
-        alert('Error al crear borrador: ' + (resultado.error || 'Error desconocido'));
+        notify('Error al crear borrador: ' + (resultado.error || 'Error desconocido'), 'error');
       }
     } catch (err: any) {
-      alert('Error al crear borrador: ' + (err?.message || JSON.stringify(err)));
+      notify('Error al crear borrador: ' + (err?.message || JSON.stringify(err)), 'error');
     } finally {
       setCreando((prev) => ({ ...prev, [String(p.id_transaccion)]: false }));
     }
@@ -126,12 +129,17 @@ export default function ListaPendientes() {
   };
 
   const handleAceptar = async (p: CambioListado) => {
-    if (!window.confirm(`¿Confirmar e intercambiar las convocatorias de la solicitud #${p.id_transaccion}?`)) return;
+    const ok = await confirmDialog({
+      title: 'Confirmar intercambio',
+      message: `¿Confirmar e intercambiar las convocatorias de la solicitud #${p.id_transaccion}?`,
+      confirmLabel: 'Aceptar',
+    });
+    if (!ok) return;
     try {
       const usuario = await obtenerUsuarioActual();
       await aceptar.mutateAsync({ id_transaccion: p.id_transaccion!, usuario });
     } catch (err: any) {
-      alert('Error al aceptar: ' + (err?.message || JSON.stringify(err)));
+      notify('Error al aceptar: ' + (err?.message || JSON.stringify(err)), 'error');
     }
   };
 
@@ -141,7 +149,7 @@ export default function ListaPendientes() {
       await cancelar.mutateAsync({ id_transaccion: p.id_transaccion!, motivo: 'Cancelada por el usuario', usuario });
       setConfirmarCancelar(null);
     } catch (err: any) {
-      alert('Error al cancelar: ' + (err?.message || JSON.stringify(err)));
+      notify('Error al cancelar: ' + (err?.message || JSON.stringify(err)), 'error');
     }
   };
 
@@ -216,13 +224,14 @@ export default function ListaPendientes() {
                     <CheckCircle className="h-4 w-4" />
                     Aceptar
                   </button>
-                  <button
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={() => setEditando(p)}
-                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-outline-variant/30 text-sm font-medium hover:bg-outline-variant/10 transition-colors"
                   >
                     <Pencil className="h-4 w-4" />
                     Editar
-                  </button>
+                  </Button>
                   <button
                     onClick={() => setConfirmarCancelar(p)}
                     className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-red-300 text-red-700 text-sm font-medium hover:bg-red-50 transition-colors"
@@ -230,13 +239,14 @@ export default function ListaPendientes() {
                     <Trash2 className="h-4 w-4" />
                     Borrar
                   </button>
-                  <button
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={() => setHistorialId(p.id_transaccion)}
-                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-outline-variant/30 text-sm font-medium text-on-surface-variant hover:bg-outline-variant/10 transition-colors"
                   >
                     <History className="h-4 w-4" />
                     Historial
-                  </button>
+                  </Button>
 
                   {/* Zona correo: chips de estado + switch + crear + editar */}
                   <div className="flex flex-wrap items-center gap-2 ml-auto">
@@ -262,7 +272,7 @@ export default function ListaPendientes() {
                       onClick={() => handleCrearBorrador(p)}
                       disabled={!!creandoEste}
                       title={modoCreado ? 'Borrador ya creado. Pulsar lo recrea/actualiza.' : 'Falta crear este borrador'}
-                      className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50 ${modoCreado ? 'bg-green-600 text-white' : 'bg-amber-500 text-white'}`}
+                      className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium hover:opacity-90 transition-all disabled:opacity-50 ${modoCreado ? 'bg-green-600 text-white' : 'bg-amber-500 text-white'}`}
                     >
                       {creandoEste ? (
                         <span className="flex items-center gap-1">Creando...</span>
@@ -270,13 +280,14 @@ export default function ListaPendientes() {
                         <><FilePlus2 className="h-4 w-4" /> Crear borrador</>
                       )}
                     </button>
-                    <button
+                    <Button
+                      variant="tonal"
+                      size="sm"
                       onClick={() => handleEditarBorrador(p)}
-                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-outline-variant/30 text-sm font-medium text-primary hover:bg-primary/10 transition-colors"
                     >
                       <Mail className="h-4 w-4" />
                       Editar borrador
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -285,13 +296,11 @@ export default function ListaPendientes() {
         </div>
       )}
 
-      {editando && (
-        <EditarSolicitudModal
-          isOpen={!!editando}
-          solicitud={editando}
-          onClose={() => setEditando(null)}
-        />
-      )}
+      <EditarSolicitudModal
+        isOpen={!!editando}
+        solicitud={editando}
+        onClose={() => setEditando(null)}
+      />
 
       <HistorialCambioModal
         isOpen={historialId !== null}
@@ -299,30 +308,33 @@ export default function ListaPendientes() {
         onClose={() => setHistorialId(null)}
       />
 
-      {correoModal && (
-        <EmailDraftModal
-          isOpen={!!correoModal}
-          modo={correoModal.modo}
-          templateVars={correoModal.templateVars}
-          emails={correoModal.emails}
-          onClose={() => setCorreoModal(null)}
-        />
-      )}
+      <EmailDraftModal
+        isOpen={!!correoModal}
+        modo={correoModal?.modo ?? 'pendiente'}
+        templateVars={correoModal?.templateVars ?? ({} as TemplateVars)}
+        emails={correoModal?.emails ?? []}
+        onClose={() => setCorreoModal(null)}
+      />
 
-      {confirmarCancelar && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 pointer-events-auto">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm m-4 p-6">
+      <ModalShell
+        open={!!confirmarCancelar}
+        onClose={() => setConfirmarCancelar(null)}
+        overlayClassName="flex items-center justify-center bg-black/30"
+        panelClassName="bg-white rounded-xl shadow-2xl w-full max-w-sm m-4 p-6"
+      >
+        {confirmarCancelar && (
+          <>
             <h3 className="text-lg font-semibold mb-2">Cancelar solicitud #{confirmarCancelar.id_transaccion}</h3>
             <p className="text-sm text-on-surface-variant mb-5">
               ¿Estás seguro de que querés cancelar esta solicitud? Quedará registrada como CANCELADA.
             </p>
             <div className="flex justify-end gap-3">
-              <button
+              <Button
+                variant="outline"
                 onClick={() => setConfirmarCancelar(null)}
-                className="px-4 py-2 rounded-lg border border-outline-variant/30 text-sm font-medium hover:bg-outline-variant/10 transition-colors"
               >
                 Volver
-              </button>
+              </Button>
               <button
                 onClick={() => handleCancelar(confirmarCancelar)}
                 disabled={cancelar.isPending}
@@ -331,9 +343,9 @@ export default function ListaPendientes() {
                 {cancelar.isPending ? 'Cancelando...' : 'Confirmar cancelación'}
               </button>
             </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </ModalShell>
     </div>
   );
 }

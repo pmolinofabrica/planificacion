@@ -71,7 +71,7 @@ export default function CapacitacionesPage() {
       id: 'id_cap',
       header: 'ID',
       accessorFn: row => row.data.id_cap,
-      cell: ({ row }) => <span className="text-gray-400 text-xs">{row.original.data.id_cap ?? '—'}</span>,
+      cell: ({ row }) => <span className="text-gray-500 text-xs">{row.original.data.id_cap ?? '—'}</span>,
       size: 50,
     },
     editableColumn<CapacitacionDraft>('id_dia', 'Día', 'select', diasOptions),

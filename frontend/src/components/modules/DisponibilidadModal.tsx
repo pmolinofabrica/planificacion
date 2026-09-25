@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
+import { ModalShell } from '../ui/ModalShell';
 
 interface DisponibilidadModalProps {
   open: boolean;
@@ -80,10 +81,10 @@ function MatrixTable<R, C>({
                         <div
                           key={cell.id}
                           title={cell.sublabel}
-                          className="bg-white border border-outline-variant/20 rounded-md px-2 py-1 text-[11px] shadow-sm leading-tight"
+                          className="bg-white border border-outline-variant/20 rounded-md px-2 py-1 text-xs shadow-sm leading-tight"
                         >
                           {cell.label}
-                          {cell.sublabel && <div className="text-[9px] text-on-surface-variant/70 mt-0.5">{cell.sublabel}</div>}
+                          {cell.sublabel && <div className="text-xs text-on-surface-variant/70 mt-0.5">{cell.sublabel}</div>}
                         </div>
                       ))}
                     </div>
@@ -95,7 +96,7 @@ function MatrixTable<R, C>({
         </tbody>
       </table>
       {rows.length === 0 && (
-        <div className="py-4 text-xs text-gray-400 text-center italic">Sin datos para mostrar.</div>
+        <div className="py-4 text-xs text-gray-500 text-center italic">Sin datos para mostrar.</div>
       )}
     </div>
   );
@@ -130,8 +131,6 @@ export default function DisponibilidadModal({ open, onClose, agentes, agentesGru
     })();
   }, [open, tab, eventualData]);
 
-  if (!open) return null;
-
   const fijaRows = agentesGruposDias
     .map(r => ({ ...r, agente: agentes.find(a => a.id_agente === r.id_agente) }))
     .filter(r => r.agente);
@@ -143,11 +142,15 @@ export default function DisponibilidadModal({ open, onClose, agentes, agentesGru
   const fechasEventual = eventualData ? [...new Set(eventualData.map(r => r.fecha))].sort() : [];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-10 bg-black/30 backdrop-blur-sm" onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-6xl p-6 max-h-[85vh] overflow-y-auto m-4" onClick={e => e.stopPropagation()}>
+    <ModalShell
+      open={open}
+      onClose={onClose}
+      overlayClassName="flex items-start justify-center pt-10 bg-black/30 backdrop-blur-sm"
+      panelClassName="bg-white rounded-xl shadow-2xl w-full max-w-6xl p-6 max-h-[85vh] overflow-y-auto m-4"
+    >
         <div className="flex justify-between items-center mb-4">
           <h3 className="font-headline text-lg font-bold text-gray-800">Disponibilidad</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-600 text-xl leading-none transition-colors p-1 -m-1 rounded-md hover:bg-surface-container-high">&times;</button>
         </div>
 
         <div className="flex gap-1 mb-4 bg-surface-container-low rounded-lg p-1 w-fit">
@@ -211,7 +214,6 @@ export default function DisponibilidadModal({ open, onClose, agentes, agentesGru
             )}
           </>
         )}
-      </div>
-    </div>
+    </ModalShell>
   );
 }

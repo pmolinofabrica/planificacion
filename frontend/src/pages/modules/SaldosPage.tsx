@@ -405,7 +405,7 @@ export default function SaldosPage() {
 
             <button
               onClick={() => setSortDir((dir) => (dir === 'asc' ? 'desc' : 'asc'))}
-              className="border border-gray-300 rounded px-3 py-1.5 text-sm bg-white hover:bg-gray-100"
+              className="border border-gray-300 rounded px-3 py-1.5 text-sm bg-white hover:bg-gray-100 transition-colors"
               title={sortDir === 'asc' ? 'Ascendente (cambiar a descendente)' : 'Descendente (cambiar a ascendente)'}
             >
               {sortDir === 'asc' ? '↑ Asc' : '↓ Desc'}
@@ -481,16 +481,16 @@ export default function SaldosPage() {
                     {label}
                   </th>
                 ))}
-                <th className="px-4 py-3 font-semibold border-b text-center min-w-[160px]">Saldo final<br/><span className="text-[10px] font-normal opacity-70">48h / 12</span></th>
+                <th className="px-4 py-3 font-semibold border-b text-center min-w-[160px]">Saldo final<br/><span className="text-xs font-normal opacity-70">48h / 12</span></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
               {sortedHistoricalData.map((row) => (
-                <tr key={row.id_agente} className="hover:bg-gray-50 align-top">
+                <tr key={row.id_agente} className="hover:bg-gray-50 align-top transition-colors">
                   <td className="px-4 py-3 sticky left-0 bg-white z-10">
                     <div className="font-medium text-gray-900">{row.agente}</div>
                     <div className="text-xs text-gray-500">{row.dni || 'Sin DNI'}</div>
-                    <div className="text-xs text-gray-400 mt-1">
+                    <div className="text-xs text-gray-500 mt-1">
                       Acum.: {formatHours(row.totalCumplido)} / Obj. 48h: {formatHours(row.totalObjetivo)} / Obj. 12: {formatHours(row.totalObjetivo12w)}
                     </div>
                   </td>
@@ -503,37 +503,37 @@ export default function SaldosPage() {
                         >
                           <div className="grid gap-2">
                             <div className="rounded-lg border border-violet-200 bg-violet-50 px-2 py-2 text-violet-800">
-                              <div className="text-[10px] uppercase tracking-wider opacity-75">Convocadas</div>
+                              <div className="text-xs uppercase tracking-wider opacity-75">Convocadas</div>
                               <div className="text-base font-bold">{formatHours(monthData.horasConvocadas)}</div>
-                              <div className="text-[11px] opacity-80">Canceladas: {formatHours(monthData.horasCanceladas)}</div>
+                              <div className="text-xs opacity-80">Canceladas: {formatHours(monthData.horasCanceladas)}</div>
                             </div>
                             <div className="rounded-lg border border-sky-200 bg-sky-50 px-2 py-2 text-sky-800">
-                              <div className="text-[10px] uppercase tracking-wider opacity-75">Reales</div>
+                              <div className="text-xs uppercase tracking-wider opacity-75">Reales</div>
                               <div className="text-base font-bold">{formatHours(monthData.horasCumplidas)}</div>
-                              <div className="text-[11px] opacity-80">Acum: {formatHours(monthData.horasCumplidasAcumuladas)}</div>
+                              <div className="text-xs opacity-80">Acum: {formatHours(monthData.horasCumplidasAcumuladas)}</div>
                             </div>
                             <div className="rounded-lg border border-amber-200 bg-amber-50 px-2 py-2 text-amber-900">
-                              <div className="text-[10px] uppercase tracking-wider opacity-75">A cumplir</div>
+                              <div className="text-xs uppercase tracking-wider opacity-75">A cumplir</div>
                               <div className="flex items-center gap-1">
-                                <span className="text-[10px] opacity-80">48h:</span>
+                                <span className="text-xs opacity-80">48h:</span>
                                 <span className="text-sm font-semibold">{formatHours(monthData.horasObjetivoMes)}</span>
                               </div>
                               <div className="flex items-center gap-1">
-                                <span className="text-[10px] opacity-80">12:</span>
+                                <span className="text-xs opacity-80">12:</span>
                                 <span className="text-sm font-semibold">{formatHours(monthData.horasObjetivoMes12w)}</span>
                               </div>
                             </div>
                             <div className={`rounded-lg border px-2 py-2 ${getSaldoClasses(monthData.saldoAcumulado)}`}>
-                              <div className="text-[10px] uppercase tracking-wider opacity-75">Saldo (dif.)</div>
+                              <div className="text-xs uppercase tracking-wider opacity-75">Saldo (dif.)</div>
                               <div className="flex items-center gap-1">
-                                <span className="text-[10px] opacity-80">48h:</span>
+                                <span className="text-xs opacity-80">48h:</span>
                                 <span className="text-sm font-bold">
                                   {monthData.saldoAcumulado > 0 ? '+' : ''}
                                   {formatHours(monthData.saldoAcumulado)}
                                 </span>
                               </div>
                               <div className="flex items-center gap-1">
-                                <span className="text-[10px] opacity-80">12:</span>
+                                <span className="text-xs opacity-80">12:</span>
                                 <span className="text-sm font-bold">
                                   {monthData.saldoAcumulado12w > 0 ? '+' : ''}
                                   {formatHours(monthData.saldoAcumulado12w)}
@@ -543,7 +543,7 @@ export default function SaldosPage() {
                           </div>
                         </div>
                       ) : (
-                        <div className="rounded-xl border border-dashed border-gray-200 px-2 py-10 text-gray-300">-</div>
+                        <div className="rounded-xl border border-dashed border-gray-200 px-2 py-10 text-gray-500">-</div>
                       )}
                     </td>
                   ))}
@@ -553,8 +553,8 @@ export default function SaldosPage() {
                         className="flex flex-col rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-blue-800"
                         title={`Obj. 48h: ${formatHours(row.totalObjetivo)} - Cumplidas: ${formatHours(row.totalCumplido)} = ${row.saldoFinal > 0 ? '+' : ''}${formatHours(row.saldoFinal)}`}
                       >
-                        <span className="text-[10px] uppercase tracking-wider font-bold opacity-80">Obj. 48h</span>
-                        <span className="text-[11px] opacity-80">{formatHours(row.totalObjetivo)} - {formatHours(row.totalCumplido)}</span>
+                        <span className="text-xs uppercase tracking-wider font-bold opacity-80">Obj. 48h</span>
+                        <span className="text-xs opacity-80">{formatHours(row.totalObjetivo)} - {formatHours(row.totalCumplido)}</span>
                         <span className={`text-lg font-bold ${row.saldoFinal < 0 ? 'text-red-600' : row.saldoFinal > 0 ? 'text-emerald-600' : ''}`}>
                           {row.saldoFinal > 0 ? '+' : ''}
                           {formatHours(row.saldoFinal)}
@@ -564,8 +564,8 @@ export default function SaldosPage() {
                         className="flex flex-col rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-violet-800"
                         title={`Obj. 12: ${formatHours(row.totalObjetivo12w)} - Cumplidas: ${formatHours(row.totalCumplido)} = ${row.saldoFinal12w > 0 ? '+' : ''}${formatHours(row.saldoFinal12w)}`}
                       >
-                        <span className="text-[10px] uppercase tracking-wider font-bold opacity-80">Obj. 12</span>
-                        <span className="text-[11px] opacity-80">{formatHours(row.totalObjetivo12w)} - {formatHours(row.totalCumplido)}</span>
+                        <span className="text-xs uppercase tracking-wider font-bold opacity-80">Obj. 12</span>
+                        <span className="text-xs opacity-80">{formatHours(row.totalObjetivo12w)} - {formatHours(row.totalCumplido)}</span>
                         <span className={`text-lg font-bold ${row.saldoFinal12w < 0 ? 'text-red-600' : row.saldoFinal12w > 0 ? 'text-emerald-600' : ''}`}>
                           {row.saldoFinal12w > 0 ? '+' : ''}
                           {formatHours(row.saldoFinal12w)}
@@ -607,9 +607,9 @@ export default function SaldosPage() {
             </thead>
             <tbody className="divide-y divide-gray-200">
               {sortedData.map((row) => (
-                <tr key={row.id_agente} className="hover:bg-gray-50">
+                <tr key={row.id_agente} className="hover:bg-gray-50 transition-colors">
                   <td className="px-4 py-2 font-medium">
-                    {row.residente} <span className="text-gray-400 font-normal">({row.dni})</span>
+                    {row.residente} <span className="text-gray-500 font-normal">({row.dni})</span>
                   </td>
                   <td className="px-4 py-2 text-center text-gray-600">{formatHours(row.horas_convocadas)}</td>
                   <td className="px-4 py-2 text-center text-red-600">{formatHours(row.horas_canceladas)}</td>

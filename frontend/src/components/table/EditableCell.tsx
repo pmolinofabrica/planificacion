@@ -112,7 +112,7 @@ export const EditableCell = React.memo(function EditableCell({ value, onSave, ty
       title="Click para editar"
     >
       {dv === null || dv === undefined || dv === '' ? (
-        <span className="text-gray-300 italic">—</span>
+        <span className="text-gray-500 italic">—</span>
       ) : (
         String(dv)
       )}

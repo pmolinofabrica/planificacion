@@ -15,6 +15,7 @@ import { batchInsert, batchUpdate, batchDelete } from '../../utils/batch';
 import EditableCell from './EditableCell';
 import ConfirmModal from '../ui/ConfirmModal';
 import BatchResultModal from '../ui/BatchResultModal';
+import { Card } from '../ui/Card';
 
 interface DataTableProps<T extends object> {
   tableName: string;
@@ -381,7 +382,7 @@ export default function DataTable<T extends object>(props: DataTableProps<T>) {
       cell: ({ row }) => enableClone && (
         <button
           onClick={() => cloneRow(row.original.data)}
-          className="text-blue-500 hover:text-blue-700 bg-blue-50 px-1 rounded font-bold text-xs border border-blue-200"
+          className="text-blue-500 hover:text-blue-700 bg-blue-50 px-1 rounded font-bold text-xs border border-blue-200 transition-colors"
           title="Duplicar esta fila"
         >
           📑
@@ -464,7 +465,7 @@ export default function DataTable<T extends object>(props: DataTableProps<T>) {
       </div>
 
       {/* Table */}
-      <div className="overflow-x-auto bg-surface-container-lowest rounded-xl shadow-sm border border-outline-variant/10">
+      <Card className="overflow-x-auto">
         <table className="min-w-full text-left border-collapse text-sm">
           <thead className="bg-surface-container-low sticky top-0 z-10">
             {table.getHeaderGroups().map((headerGroup) => (
@@ -478,7 +479,7 @@ export default function DataTable<T extends object>(props: DataTableProps<T>) {
                     {!header.isPlaceholder && (
                       <div className="flex flex-col gap-2">
                         <div
-                          className={`flex items-center gap-1 ${header.column.getCanSort() ? 'cursor-pointer select-none hover:text-primary' : ''}`}
+                          className={`flex items-center gap-1 ${header.column.getCanSort() ? 'cursor-pointer select-none hover:text-primary transition-colors' : ''}`}
                           onClick={header.column.getToggleSortingHandler()}
                         >
                           {flexRender(header.column.columnDef.header, header.getContext())}
@@ -489,7 +490,7 @@ export default function DataTable<T extends object>(props: DataTableProps<T>) {
                             type="text"
                             value={(header.column.getFilterValue() ?? '') as string}
                             onChange={(e) => header.column.setFilterValue(e.target.value)}
-                            className="w-full px-2 py-1 text-[10px] font-body normal-case tracking-normal text-slate-700 bg-surface border border-outline-variant/30 rounded focus:ring-1 focus:ring-primary outline-none"
+                            className="w-full px-2 py-1 text-xs font-body normal-case tracking-normal text-slate-700 bg-surface border border-outline-variant/30 rounded focus:ring-1 focus:ring-primary outline-none"
                             placeholder="Filtrar..."
                           />
                         ) : null}
@@ -509,11 +510,11 @@ export default function DataTable<T extends object>(props: DataTableProps<T>) {
                     className={
                       [
                         status === 'new'
-                          ? 'bg-emerald-500/10'
+                          ? 'bg-emerald-500/10 row-hover transition-colors'
                           : status === 'modified'
-                          ? 'bg-yellow-500/10'
+                          ? 'bg-yellow-500/10 row-hover transition-colors'
                           : status === 'deleted'
-                          ? 'bg-error/10 opacity-50'
+                          ? 'bg-error/10 opacity-50 row-hover transition-colors'
                           : 'row-hover transition-colors',
                         getRowClassName?.(row.original) ?? '',
                       ].filter(Boolean).join(' ')
@@ -529,14 +530,14 @@ export default function DataTable<T extends object>(props: DataTableProps<T>) {
             })}
             {visibleRows.length === 0 && (
               <tr>
-                <td colSpan={tableColumns.length} className="px-4 py-8 text-center text-gray-400 text-sm">
+                <td colSpan={tableColumns.length} className="px-4 py-8 text-center text-gray-500 text-sm">
                   No hay registros.
                 </td>
               </tr>
             )}
           </tbody>
         </table>
-      </div>
+      </Card>
 
       {/* Pagination Controls */}
       <div className="flex items-center justify-between px-2 py-3 mt-2 border-t border-gray-200">
@@ -562,47 +563,45 @@ export default function DataTable<T extends object>(props: DataTableProps<T>) {
           <button
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
-            className="px-3 py-1 bg-gray-100 text-gray-700 rounded border border-gray-300 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold"
+            className="px-3 py-1 bg-gray-100 text-gray-700 rounded border border-gray-300 hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold"
           >
             Anterior
           </button>
           <button
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
-            className="px-3 py-1 bg-gray-100 text-gray-700 rounded border border-gray-300 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold"
+            className="px-3 py-1 bg-gray-100 text-gray-700 rounded border border-gray-300 hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold"
           >
             Siguiente
           </button>
         </div>
       </div>
 
-      <p className="text-xs text-gray-400 mt-2">
+      <p className="text-xs text-gray-500 mt-2">
         {visibleRows.length} registros totales · {diff.inserts.length} nuevos · {diff.updates.length} modificados · {diff.deletes.length} a eliminar
       </p>
 
       {/* Modals */}
-      {showConfirm && (
-        <ConfirmModal
-          insertCount={diff.inserts.length}
-          updateCount={diff.updates.length}
-          deleteCount={diff.deletes.length}
-          onConfirm={handleSave}
-          onCancel={() => setShowConfirm(false)}
-          loading={saving}
-        />
-      )}
+      <ConfirmModal
+        open={showConfirm}
+        insertCount={diff.inserts.length}
+        updateCount={diff.updates.length}
+        deleteCount={diff.deletes.length}
+        onConfirm={handleSave}
+        onCancel={() => setShowConfirm(false)}
+        loading={saving}
+      />
 
-      {batchResult && (
-        <BatchResultModal
-          successCount={batchResult.successes}
-          failures={batchResult.failures}
-          onRetry={handleRetry}
-          onClose={() => {
-            setBatchResult(null);
-            onRefresh();
-          }}
-        />
-      )}
+      <BatchResultModal
+        open={!!batchResult}
+        successCount={batchResult?.successes ?? 0}
+        failures={batchResult?.failures ?? []}
+        onRetry={handleRetry}
+        onClose={() => {
+          setBatchResult(null);
+          onRefresh();
+        }}
+      />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
 import DataTable, { editableColumn } from '../../components/table/DataTable';
 import type { TrackedRow } from '../../types/table';
@@ -8,7 +8,7 @@ import type { Dispositivo } from '../../types/database';
 type DispositivoDraft = Omit<Dispositivo, 'id_dispositivo'> & { id_dispositivo?: number };
 
 const columns: ColumnDef<TrackedRow<DispositivoDraft>>[] = [
-  { id: 'id_dispositivo', header: 'ID', cell: ({ row }) => <span className="text-gray-400 text-xs">{row.original.data.id_dispositivo ?? '—'}</span>, size: 50 },
+  { id: 'id_dispositivo', header: 'ID', cell: ({ row }) => <span className="text-gray-500 text-xs">{row.original.data.id_dispositivo ?? '—'}</span>, size: 50 },
   editableColumn<DispositivoDraft>('nombre_dispositivo', 'Nombre'),
   editableColumn<DispositivoDraft>('piso_dispositivo', 'Piso', 'number'),
   editableColumn<DispositivoDraft>('activo', 'Activo', 'boolean'),

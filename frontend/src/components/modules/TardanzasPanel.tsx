@@ -1,5 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
+import { ModalShell } from '../ui/ModalShell';
+import { Button } from '../ui/Button';
+import { Card } from '../ui/Card';
 
 type TardanzaResumen = {
   id_agente: number;
@@ -579,24 +582,25 @@ export default function TardanzasPanel() {
 
   return (
     <div className="space-y-4">
-      <div className="p-3 bg-surface-container-lowest/70 backdrop-blur-md rounded-xl border border-outline-variant/10 shadow-sm">
+      <Card variant="glass" className="p-3">
         <div className="flex items-center justify-between mb-3 gap-2">
           <div className="text-xs font-bold text-primary font-headline uppercase tracking-wider">
             Registrar Tardanzas por Convocatoria
           </div>
-          <button
+          <Button
+            variant="tonal"
+            size="sm"
             onClick={fetchConvocados}
             disabled={loadingConvocados}
-            className="bg-primary/10 text-primary px-3 py-1.5 rounded-lg text-[10px] font-bold font-headline uppercase tracking-wider hover:bg-primary/20 transition-all active:scale-95 disabled:opacity-50"
             title="Sincronizar con la base de datos"
           >
             {loadingConvocados ? '…' : 'Sincronizar'}
-          </button>
+          </Button>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-2 mb-3">
           <div className="flex-1">
-            <label className="text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider mb-1 block">Fecha</label>
+            <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1 block">Fecha</label>
             <input
               type="date"
               value={selectedDate}
@@ -605,7 +609,7 @@ export default function TardanzasPanel() {
             />
           </div>
           <div className="flex-1">
-            <label className="text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider mb-1 block">Tipo de Turno</label>
+            <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1 block">Tipo de Turno</label>
             <select
               value={selectedTurnoId ?? ''}
               onChange={(e) => { setSelectedTurnoId(e.target.value ? Number(e.target.value) : null); setSaveSummary(null); }}
@@ -619,7 +623,7 @@ export default function TardanzasPanel() {
         </div>
 
         {loadingConvocados && (
-          <div className="text-xs text-slate-400 italic py-4 text-center">Cargando convocados…</div>
+          <div className="text-xs text-on-surface-variant italic py-4 text-center">Cargando convocados…</div>
         )}
 
         {convocadosError && (
@@ -627,7 +631,7 @@ export default function TardanzasPanel() {
         )}
 
         {!loadingConvocados && convocados.length === 0 && !convocadosError && selectedDate && selectedTurnoId && (
-          <div className="text-xs text-slate-400 italic py-2">No hay convocados para esta fecha y turno.</div>
+          <div className="text-xs text-on-surface-variant italic py-2">No hay convocados para esta fecha y turno.</div>
         )}
 
         {saveSummary && (
@@ -670,13 +674,13 @@ export default function TardanzasPanel() {
                       </span>
                     </td>
                     <td className="py-1.5 px-2 text-center font-mono font-bold">
-                      <span className={c.total_6ta_tardanza > 0 ? 'text-red-600' : 'text-gray-400'}>
+                      <span className={c.total_6ta_tardanza > 0 ? 'text-red-600' : 'text-gray-500'}>
                         {c.total_6ta_tardanza}
                       </span>
                     </td>
                     <td className="py-1.5 px-2 text-center">
                       {c.conv6ta.length === 0 ? (
-                        <span className="text-gray-300">—</span>
+                        <span className="text-gray-500">—</span>
                       ) : (
                         <div className="flex flex-wrap gap-1.5 justify-center">
                           {c.conv6ta.map((ci, idx) => (
@@ -693,7 +697,7 @@ export default function TardanzasPanel() {
                                 className="accent-primary w-4 h-4 cursor-pointer disabled:opacity-50"
                                 aria-label={`Conversación 6ta para ${c.agente} del ${ci.fecha_inasistencia}`}
                               />
-                              <span className="text-[9px] font-mono text-gray-400 leading-none">
+                              <span className="text-xs font-mono text-gray-500 leading-none">
                                 {idx + 1}{ci.fecha_conv ? `-${ci.fecha_conv.slice(5)}` : ''}
                               </span>
                             </label>
@@ -710,7 +714,7 @@ export default function TardanzasPanel() {
                         className="accent-primary w-4 h-4 cursor-pointer disabled:opacity-50"
                         aria-label={`Marcar tardanza para ${c.agente}`}
                       />
-                      {c.error && <div className="text-red-600 text-[10px] mt-1 leading-tight">{c.error}</div>}
+                      {c.error && <div className="text-red-600 text-xs mt-1 leading-tight">{c.error}</div>}
                     </td>
                   </tr>
                 ))}
@@ -724,38 +728,39 @@ export default function TardanzasPanel() {
             <button
               onClick={handleSaveTardanzas}
               disabled={savingTardanzas || dirtyCount === 0}
-              className="bg-primary text-white px-4 py-2 rounded-lg text-[11px] font-bold font-headline uppercase tracking-wider hover:bg-primary/90 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="bg-primary text-white px-4 py-2 rounded-lg text-xs font-bold font-headline uppercase tracking-wider hover:bg-primary/90 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {savingTardanzas ? 'Guardando…' : `Guardar (${dirtyCount})`}
             </button>
           </div>
         )}
-      </div>
+      </Card>
 
-      <div className="p-3 bg-surface-container-lowest/70 backdrop-blur-md rounded-xl border border-outline-variant/10 shadow-sm">
+      <Card variant="glass" className="p-3">
         <div className="flex items-center justify-between mb-3 gap-2">
           <div className="text-xs font-bold text-primary font-headline uppercase tracking-wider flex items-center gap-2">
             Tardanzas {new Date().getFullYear()} ({rows.length} residentes)
             {latestDate && (
-              <span className="ml-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-mono text-[10px] font-bold tracking-normal">
+              <span className="ml-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-mono text-xs font-bold tracking-normal">
                 {latestDate}
               </span>
             )}
-            {loading && <span className="text-[10px] text-slate-400 italic font-normal">cargando…</span>}
+            {loading && <span className="text-xs text-on-surface-variant italic font-normal">cargando…</span>}
           </div>
-          <button
+          <Button
+            variant="tonal"
+            size="sm"
             onClick={fetchData}
             disabled={loading}
-            className="bg-primary/10 text-primary px-3 py-1.5 rounded-lg text-[10px] font-bold font-headline uppercase tracking-wider hover:bg-primary/20 transition-all active:scale-95 disabled:opacity-50"
           >
             Refrescar
-          </button>
+          </Button>
         </div>
 
         {error && <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded mb-3 text-xs">{error}</div>}
 
         {!loading && rows.length === 0 && !error && (
-          <div className="text-xs text-slate-400 italic py-2">No hay tardanzas registradas este año.</div>
+          <div className="text-xs text-on-surface-variant italic py-2">No hay tardanzas registradas este año.</div>
         )}
 
         {rows.length > 0 && (
@@ -782,7 +787,7 @@ export default function TardanzasPanel() {
                   <tr
                     key={r.id_agente}
                     onClick={() => openPopup(r)}
-                    className="border-b border-outline-variant/10 hover:bg-primary/5 transition-colors cursor-pointer active:scale-[0.99]"
+                    className="border-b border-outline-variant/10 hover:bg-primary/5 transition-[background-color,transform] cursor-pointer active:scale-[0.99]"
                   >
                     <td className="py-1.5 px-2 font-medium truncate">{r.apellido}, {r.nombre}</td>
                     <td className="py-1.5 px-2 text-right font-mono font-bold">
@@ -791,20 +796,20 @@ export default function TardanzasPanel() {
                       </span>
                     </td>
                     <td className="py-1.5 px-2 text-right font-mono font-bold">
-                      <span className={r.total_6ta_tardanza > 0 ? 'text-red-600' : 'text-gray-400'}>
+                      <span className={r.total_6ta_tardanza > 0 ? 'text-red-600' : 'text-gray-500'}>
                         {r.total_6ta_tardanza}
                       </span>
                     </td>
                     <td className="py-1.5 px-2 text-center">
                       {r.inas6ta.length === 0 ? (
-                        <span className="text-gray-300">—</span>
+                        <span className="text-gray-500">—</span>
                       ) : (
                         <div className="flex flex-wrap gap-1 justify-center">
                           {r.inas6ta.map((i, idx) => (
                             <span
                               key={idx}
                               title={i.fecha_inasistencia}
-                              className={`inline-flex items-center justify-center w-4 h-4 rounded text-[11px] font-bold ${
+                              className={`inline-flex items-center justify-center w-4 h-4 rounded text-xs font-bold ${
                                 i.conv_6ta
                                   ? 'bg-emerald-100 text-emerald-700'
                                   : 'bg-red-50 text-red-600'
@@ -830,36 +835,35 @@ export default function TardanzasPanel() {
           </div>
         )}
 
-        {popupAgent && (
-          <div
-            className="fixed inset-0 z-50 flex items-start justify-center pt-10 bg-black/30 backdrop-blur-sm"
-            onClick={closePopup}
-          >
-            <div
-              className="bg-white rounded-xl shadow-2xl border border-outline-variant/20 w-full max-w-lg mx-4 max-h-[70vh] flex flex-col"
-              onClick={(e) => e.stopPropagation()}
-            >
+        <ModalShell
+          open={!!popupAgent}
+          onClose={closePopup}
+          overlayClassName="flex items-start justify-center pt-10 bg-black/30 backdrop-blur-sm"
+          panelClassName="bg-white rounded-xl shadow-2xl border border-outline-variant/20 w-full max-w-lg mx-4 max-h-[70vh] flex flex-col"
+        >
+          {popupAgent && (
+            <>
               <div className="flex items-center justify-between px-4 py-3 border-b border-outline-variant/20">
                 <h3 className="font-headline uppercase tracking-wider text-xs font-bold text-primary">
                   Tardanzas — {popupAgent.nombre}
                 </h3>
                 <button
                   onClick={closePopup}
-                  className="text-gray-400 hover:text-gray-600 text-xl leading-none p-1"
+                  className="text-gray-500 hover:text-gray-600 text-xl leading-none p-1 transition-colors"
                 >
                   &times;
                 </button>
               </div>
               <div className="overflow-y-auto flex-1 p-3">
                 {popupLoading ? (
-                  <div className="text-xs text-slate-400 italic py-4 text-center">Cargando…</div>
+                  <div className="text-xs text-on-surface-variant italic py-4 text-center">Cargando…</div>
                 ) : popupRows.length === 0 && popupInas6ta.length === 0 ? (
-                  <div className="text-xs text-slate-400 italic py-4 text-center">Sin tardanzas registradas.</div>
+                  <div className="text-xs text-on-surface-variant italic py-4 text-center">Sin tardanzas registradas.</div>
                 ) : (
                   <>
                     {popupRows.length > 0 && (
                       <>
-                        <h4 className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-2">Tardanzas</h4>
+                        <h4 className="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Tardanzas</h4>
                         <table className="w-full text-left text-xs mb-4">
                           <thead className="sticky top-0 bg-white z-10">
                             <tr className="border-b border-outline-variant/20">
@@ -884,7 +888,7 @@ export default function TardanzasPanel() {
                     )}
                     {popupInas6ta.length > 0 && (
                       <>
-                        <h4 className="text-[10px] font-bold text-orange-700 uppercase tracking-wider mb-2">Inasistencias 6ta Tardanza</h4>
+                        <h4 className="text-xs font-bold text-orange-700 uppercase tracking-wider mb-2">Inasistencias 6ta Tardanza</h4>
                         <table className="w-full text-left text-xs">
                           <thead className="sticky top-0 bg-white z-10">
                             <tr className="border-b border-outline-variant/20">
@@ -906,10 +910,10 @@ export default function TardanzasPanel() {
                   </>
                 )}
               </div>
-            </div>
-          </div>
-        )}
-      </div>
+          </>
+          )}
+        </ModalShell>
+      </Card>
     </div>
   );
 }

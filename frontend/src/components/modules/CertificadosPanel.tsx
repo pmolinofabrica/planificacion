@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
+import { Button } from '../ui/Button';
+import { Card } from '../ui/Card';
 import type { InasistenciaView } from '../../types/database';
 
 type PanelRow = {
@@ -258,23 +260,24 @@ export default function CertificadosPanel({ onChange }: CertificadosPanelProps =
   const dirtyCount = useMemo(() => panelRows.filter(r => r.dirty).length, [panelRows]);
 
   return (
-    <div className="p-3 bg-surface-container-lowest/70 backdrop-blur-md rounded-xl border border-outline-variant/10 shadow-sm">
+    <Card variant="glass" className="p-3">
       <div className="flex items-center justify-between mb-3 gap-2">
         <div className="text-xs font-bold text-primary font-headline uppercase tracking-wider flex items-center gap-2">
           Certificados Pendientes ({panelRows.length})
-          {panelLoading && <span className="text-[10px] text-slate-400 italic font-normal">cargando…</span>}
+          {panelLoading && <span className="text-xs text-on-surface-variant italic font-normal">cargando…</span>}
         </div>
         <div className="flex gap-2">
-          <button
+          <Button
+            variant="tonal"
+            size="sm"
             onClick={fetchPanel}
-            className="bg-primary/10 text-primary px-3 py-1.5 rounded-lg text-[10px] font-bold font-headline uppercase tracking-wider hover:bg-primary/20 transition-all active:scale-95"
           >
             Refrescar
-          </button>
+          </Button>
           <button
             onClick={handleSaveAll}
             disabled={savingAll || dirtyCount === 0}
-            className="bg-primary text-white px-3 py-1.5 rounded-lg text-[10px] font-bold font-headline uppercase tracking-wider hover:bg-primary/90 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="bg-primary text-white px-3 py-1.5 rounded-lg text-xs font-bold font-headline uppercase tracking-wider hover:bg-primary/90 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {savingAll ? 'Guardando…' : `Guardar (${dirtyCount})`}
           </button>
@@ -289,7 +292,7 @@ export default function CertificadosPanel({ onChange }: CertificadosPanelProps =
       )}
       {panelError && <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded mb-3 text-xs">{panelError}</div>}
       {panelRows.length === 0 ? (
-        <div className="text-xs text-slate-400 italic py-2">No hay inasistencias con requiere_certificado=true sin presentar este año.</div>
+        <div className="text-xs text-on-surface-variant italic py-2">No hay inasistencias con requiere_certificado=true sin presentar este año.</div>
       ) : (
         <div className="overflow-x-auto max-h-[60vh] overflow-y-auto">
           <table className="w-full table-fixed text-left text-xs">
@@ -324,7 +327,7 @@ export default function CertificadosPanel({ onChange }: CertificadosPanelProps =
                       className="accent-primary w-4 h-4 cursor-pointer disabled:opacity-50"
                       aria-label="Marcar certificado como presentado"
                     />
-                    {row.error && <div className="text-red-600 text-[10px] mt-1 leading-tight max-w-[120px] mx-auto">{row.error}</div>}
+                    {row.error && <div className="text-red-600 text-xs mt-1 leading-tight max-w-[120px] mx-auto">{row.error}</div>}
                   </td>
                   <td className="py-1.5 px-2 text-center">
                     <input
@@ -341,6 +344,6 @@ export default function CertificadosPanel({ onChange }: CertificadosPanelProps =
           </table>
         </div>
       )}
-    </div>
+    </Card>
   );
 }

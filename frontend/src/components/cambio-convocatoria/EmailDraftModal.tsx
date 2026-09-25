@@ -1,7 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Mail, Save, RotateCcw } from 'lucide-react';
 import { reemplazarVariables, obtenerPlantilla, guardarPlantilla, resetPlantilla } from '../../lib/email-utils';
 import type { TemplateVars, ModoCorreo } from '../../lib/email-utils';
+import { ModalShell } from '../ui/ModalShell';
+import { Button } from '../ui/Button';
 
 interface EmailDraftModalProps {
   isOpen: boolean;
@@ -15,8 +17,8 @@ export default function EmailDraftModal({ isOpen, onClose, modo, templateVars, e
   const [asunto, setAsunto] = useState('');
   const [cuerpo, setCuerpo] = useState('');
   const [saved, setSaved] = useState(false);
-  const modalRef = useRef<HTMLDivElement>(null);
 
+  /* eslint-disable react-hooks/set-state-in-effect -- al abrir se carga la plantilla guardada en el formulario */
   useEffect(() => {
     if (isOpen) {
       const plantilla = obtenerPlantilla(modo);
@@ -24,34 +26,8 @@ export default function EmailDraftModal({ isOpen, onClose, modo, templateVars, e
       setCuerpo(plantilla.cuerpo);
       setSaved(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, modo]);
-
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        e.stopPropagation();
-      }
-    };
-
-    const handleClickOutside = (e: MouseEvent) => {
-      if (modalRef.current && !modalRef.current.contains(e.target as Node)) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown, true);
-    document.addEventListener('mousedown', handleClickOutside, true);
-
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown, true);
-      document.removeEventListener('mousedown', handleClickOutside, true);
-    };
-  }, [isOpen]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const handleSaveTemplate = () => {
     guardarPlantilla(modo, asunto, cuerpo);
@@ -66,16 +42,15 @@ export default function EmailDraftModal({ isOpen, onClose, modo, templateVars, e
     setCuerpo(plantilla.cuerpo);
   };
 
-  if (!isOpen) return null;
-
   const cuerpoPreview = reemplazarVariables(cuerpo, templateVars);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
-      <div
-        ref={modalRef}
-        className="bg-white rounded-xl shadow-2xl w-full max-w-2xl m-4 max-h-[90vh] overflow-y-auto pointer-events-auto"
-      >
+    <ModalShell
+      open={isOpen}
+      onClose={onClose}
+      overlayClassName="flex items-center justify-center bg-black/30"
+      panelClassName="bg-white rounded-xl shadow-2xl w-full max-w-2xl m-4 max-h-[90vh] overflow-y-auto"
+    >
         <div className="flex items-center justify-between px-6 py-4 border-b border-outline-variant/20">
           <div className="flex items-center gap-2">
             <Mail className="h-5 w-5 text-primary" />
@@ -109,7 +84,7 @@ export default function EmailDraftModal({ isOpen, onClose, modo, templateVars, e
             <p className="text-xs font-medium text-on-surface-variant mb-2">Variables disponibles:</p>
             <div className="flex flex-wrap gap-1">
               {Object.keys(templateVars).map((key) => (
-                <span key={key} className="px-2 py-0.5 rounded bg-outline-variant/20 text-on-surface-variant text-[10px] font-mono">
+                <span key={key} className="px-2 py-0.5 rounded bg-outline-variant/20 text-on-surface-variant text-xs font-mono">
                   {'{' + key + '}'}
                 </span>
               ))}
@@ -169,14 +144,13 @@ export default function EmailDraftModal({ isOpen, onClose, modo, templateVars, e
               Restablecer
             </button>
           </div>
-          <button
+          <Button
+            variant="outline"
             onClick={(e) => { e.stopPropagation(); onClose(); }}
-            className="px-4 py-2 rounded-lg border border-outline-variant/30 text-sm font-medium hover:bg-outline-variant/10 transition-colors"
           >
             Cerrar
-          </button>
+          </Button>
         </div>
-      </div>
-    </div>
+    </ModalShell>
   );
 }

@@ -1,6 +1,7 @@
-﻿import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
 import DataTable, { editableColumn } from '../../components/table/DataTable';
+import { Card } from '../../components/ui/Card';
 import type { TrackedRow, BatchError } from '../../types/table';
 import type { ColumnDef } from '@tanstack/react-table';
 import type { Descanso } from '../../types/database';
@@ -489,7 +490,7 @@ export default function DescansosPage() {
   };
 
   const columns = useMemo<ColumnDef<TrackedRow<DescansoDraft>>[]>(() => [
-    { id: 'id_desc', header: 'ID', cell: ({ row }) => <span className="text-gray-400 text-xs">{row.original.data.id_desc ?? '—'}</span>, size: 50 },
+    { id: 'id_desc', header: 'ID', cell: ({ row }) => <span className="text-gray-500 text-xs">{row.original.data.id_desc ?? '—'}</span>, size: 50 },
     editableColumn<DescansoDraft>('id_agente', 'Agente', 'select', agentesOptions),
     editableColumn<DescansoDraft>('fecha_solicitud', 'Fecha de Carga', 'date'),
     editableColumn<DescansoDraft>('dia_solicitado', 'Dia a Tomar', 'date'),
@@ -634,7 +635,7 @@ export default function DescansosPage() {
     <div>
       <div className="mb-4 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div><h2 className="text-xl font-bold text-gray-800">Registro de Descansos Compensatorios</h2></div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <select value={filtroMes} onChange={(e) => setFiltroMes(Number(e.target.value))} className="border border-gray-300 rounded px-3 py-1.5 text-sm bg-white focus:ring-1 focus:ring-teal-400">
             {Array.from({ length: 12 }, (_, i) => i + 1).map(m => <option key={m} value={m}>Mes {m}</option>)}
           </select>
@@ -643,7 +644,7 @@ export default function DescansosPage() {
 
       {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">{error}</div>}
 
-      <div className="mb-6 mx-0 p-4 bg-surface-container-lowest/70 backdrop-blur-md rounded-xl border border-outline-variant/10 shadow-sm">
+      <Card variant="glass" className="mb-6 mx-0 p-4">
         <div className="text-xs font-bold text-primary mb-3 font-headline uppercase tracking-wider">
           Proximos Descansos (Mes {filtroMes === 12 ? 1 : filtroMes + 1})
         </div>
@@ -674,12 +675,12 @@ export default function DescansosPage() {
             </table>
           </div>
         ) : (
-          <div className="text-xs text-slate-400 italic py-2">No hay planificaciones de descanso para el mes proximo.</div>
+          <div className="text-xs text-on-surface-variant italic py-2">No hay planificaciones de descanso para el mes proximo.</div>
         )}
-      </div>
+      </Card>
 
-      <div className="mb-6 mx-0 p-4 bg-surface-container-lowest/70 backdrop-blur-md rounded-xl border border-outline-variant/10 shadow-sm">
-        <div className="flex items-center justify-between mb-3">
+      <Card variant="glass" className="mb-6 mx-0 p-4">
+        <div className="flex items-center justify-between gap-2 flex-wrap mb-3">
           <div className="text-xs font-bold text-primary font-headline uppercase tracking-wider">
             Carga de Descansos (Mes {filtroMes === 12 ? 1 : filtroMes + 1})
           </div>
@@ -687,7 +688,7 @@ export default function DescansosPage() {
             <button
               onClick={handleGridSave}
               disabled={savingGrid}
-              className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-50 transition-colors"
+              className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-50 transition-all"
             >
               {savingGrid ? 'Guardando...' : `Guardar (${pendingAdds.length} altas, ${pendingRemoves.length} bajas)`}
             </button>
@@ -717,7 +718,7 @@ export default function DescansosPage() {
                           <span className={saldosMap[ag.id_agente] < 0 ? 'text-red-600' : saldosMap[ag.id_agente] > 0 ? 'text-emerald-600' : 'text-gray-500'}>
                             {saldosMap[ag.id_agente].toFixed(1)}
                           </span>
-                        ) : <span className="text-gray-300">-</span>}
+                        ) : <span className="text-gray-500">-</span>}
                       </td>
                       <td className="py-1 px-1 text-center font-mono">
                         <div className="flex gap-0.5 justify-center">
@@ -742,7 +743,7 @@ export default function DescansosPage() {
                           <td key={r.dayNum} className="py-1 px-1 text-center">
                             <div
                               onClick={() => handleGridToggle(ag.id_agente, r.fullDate)}
-                              className={`inline-flex items-center justify-center w-5 h-5 rounded cursor-pointer border transition-colors ${bgClass} border-outline-variant/30 hover:border-teal-500 active:scale-95`}
+                              className={`inline-flex items-center justify-center w-5 h-5 rounded cursor-pointer border transition-[background-color,border-color,transform] ${bgClass} border-outline-variant/30 hover:border-teal-500 active:scale-95`}
                               title={`${ag.apellido} - ${r.fullDate}${cell.inConvocatoria ? ' (convocado)' : ''}`}
                             >
                               {cell.inConvocatoria && (
@@ -766,9 +767,9 @@ export default function DescansosPage() {
             </table>
           </div>
         ) : (
-          <div className="text-xs text-slate-400 italic py-2">No hay datos de agentes para el mes proximo.</div>
+          <div className="text-xs text-on-surface-variant italic py-2">No hay datos de agentes para el mes proximo.</div>
         )}
-      </div>
+      </Card>
 
       {loading && data.length === 0 ? (
         <div className="flex items-center justify-center h-48 text-gray-500">Cargando registros...</div>

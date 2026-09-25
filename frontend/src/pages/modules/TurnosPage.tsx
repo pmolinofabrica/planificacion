@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
 import DataTable, { editableColumn } from '../../components/table/DataTable';
 import type { TrackedRow } from '../../types/table';
@@ -16,7 +16,7 @@ interface Turno {
 }
 
 const columns: ColumnDef<TrackedRow<Turno>>[] = [
-  { id: 'id_turno', header: 'ID', cell: ({ row }) => <span className="text-gray-400 text-xs">{row.original.data.id_turno ?? '—'}</span>, size: 50 },
+  { id: 'id_turno', header: 'ID', cell: ({ row }) => <span className="text-gray-500 text-xs">{row.original.data.id_turno ?? '—'}</span>, size: 50 },
   editableColumn<Turno>('tipo_turno', 'Tipo de turno'),
   editableColumn<Turno>('descripcion', 'Descripcion'),
   editableColumn<Turno>('cant_horas', 'Horas', 'number'),
@@ -59,7 +59,7 @@ export default function TurnosPage() {
   useEffect(() => { fetchTurnos(); }, [fetchTurnos]);
 
   if (loading) {
-    return <div className="flex items-center justify-center h-48 text-gray-400">Cargando turnos...</div>;
+    return <div className="flex items-center justify-center h-48 text-gray-500">Cargando turnos...</div>;
   }
 
   if (error) {

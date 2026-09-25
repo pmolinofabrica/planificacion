@@ -1,11 +1,13 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { X, Save, User, Calendar } from 'lucide-react';
+import { X, Save, Calendar } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { obtenerUsuarioActual } from '../../lib/auth-utils';
 import { useEditarCambio } from '../../hooks/useCambiosTurno';
 import { CAMBIO_ESTADO_LABELS } from '../../types/cambios';
 import type { CambioListado } from '../../types/cambios';
+import { ModalShell } from '../ui/ModalShell';
+import { Button } from '../ui/Button';
 
 interface Agente {
   id_agente: number;
@@ -40,7 +42,6 @@ const normalizarTurno = (tipo: string): string => {
 
 export default function EditarSolicitudModal({ isOpen, solicitud, onClose }: EditarSolicitudModalProps) {
   const editar = useEditarCambio();
-  const modalRef = useRef<HTMLDivElement>(null);
   const [observaciones, setObservaciones] = useState('');
   const [convOrig, setConvOrig] = useState<Convocatoria | null>(null);
   const [convNueva, setConvNueva] = useState<Convocatoria | null>(null);
@@ -55,25 +56,6 @@ export default function EditarSolicitudModal({ isOpen, solicitud, onClose }: Edi
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, solicitud?.id_transaccion]);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); }
-    };
-    const handleClickOutside = (e: MouseEvent) => {
-      if (modalRef.current && !modalRef.current.contains(e.target as Node)) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
-    };
-    document.addEventListener('keydown', handleKeyDown, true);
-    document.addEventListener('mousedown', handleClickOutside, true);
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown, true);
-      document.removeEventListener('mousedown', handleClickOutside, true);
-    };
-  }, [isOpen]);
 
   const { data: agentes = [] } = useQuery({
     queryKey: ['agentes-activos-editar'],
@@ -144,15 +126,16 @@ export default function EditarSolicitudModal({ isOpen, solicitud, onClose }: Edi
     onClose();
   };
 
-  if (!isOpen || !solicitud) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
-      <div
-        ref={modalRef}
-        className="bg-white rounded-xl shadow-2xl w-full max-w-2xl m-4 max-h-[90vh] overflow-y-auto pointer-events-auto"
-      >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-outline-variant/20">
+    <ModalShell
+      open={isOpen}
+      onClose={onClose}
+      overlayClassName="flex items-center justify-center bg-black/30"
+      panelClassName="bg-white rounded-xl shadow-2xl w-full max-w-2xl m-4 max-h-[90vh] overflow-y-auto"
+    >
+      {solicitud && (
+        <>
+          <div className="flex items-center justify-between px-6 py-4 border-b border-outline-variant/20">
           <div className="flex items-center gap-2">
             <Save className="h-5 w-5 text-primary" />
             <h2 className="text-lg font-semibold">Editar solicitud #{solicitud.id_transaccion}</h2>
@@ -274,22 +257,24 @@ export default function EditarSolicitudModal({ isOpen, solicitud, onClose }: Edi
         </div>
 
         <div className="flex justify-end gap-3 px-6 py-4 border-t border-outline-variant/20">
-          <button
+          <Button
+            variant="outline"
             onClick={(e) => { e.stopPropagation(); onClose(); }}
-            className="px-4 py-2 rounded-lg border border-outline-variant/30 text-sm font-medium hover:bg-outline-variant/10 transition-colors"
           >
             Cancelar
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="primary"
             onClick={(e) => { e.stopPropagation(); handleGuardar(); }}
             disabled={editar.isPending}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-on-primary text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+            className="flex items-center gap-2"
           >
             <Save className="h-4 w-4" />
             {editar.isPending ? 'Guardando...' : 'Guardar cambios'}
-          </button>
+          </Button>
         </div>
-      </div>
-    </div>
+        </>
+      )}
+    </ModalShell>
   );
 }

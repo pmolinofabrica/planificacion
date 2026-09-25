@@ -8,14 +8,26 @@ interface DialogProps {
 
 export function Dialog({ open, onOpenChange, children }: DialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
+  const closingRef = useRef(false);
 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    if (open && !el.open) {
-      el.showModal();
-    } else if (!open && el.open) {
-      el.close();
+    if (open) {
+      closingRef.current = false;
+      el.classList.remove('is-closing');
+      if (!el.open) el.showModal();
+      return;
+    }
+    if (el.open && !closingRef.current) {
+      closingRef.current = true;
+      el.classList.add('is-closing');
+      const timer = window.setTimeout(() => {
+        closingRef.current = false;
+        el.classList.remove('is-closing');
+        if (el.open) el.close();
+      }, 180);
+      return () => window.clearTimeout(timer);
     }
   }, [open]);
 

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import DataTable, { editableColumn } from '../../components/table/DataTable';
+import { ModalShell } from '../../components/ui/ModalShell';
 import type { TrackedRow, BatchError } from '../../types/table';
 import type { ColumnDef } from '@tanstack/react-table';
 import type { Row, Table } from '@tanstack/react-table';
@@ -305,7 +306,7 @@ export default function CertServPage() {
         return (
           <button
             onClick={() => openPopup(row.original._id)}
-            className="text-blue-600 hover:text-blue-800 leading-none px-1"
+            className="text-blue-600 hover:text-blue-800 leading-none px-1 transition-colors"
             title="Ver certificación"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -316,7 +317,7 @@ export default function CertServPage() {
       },
       size: 36,
     },
-    { id: 'id_cert_serv', header: 'ID', cell: ({ row }) => <span className="text-gray-400 text-xs">{row.original.data.id_cert_serv ?? '—'}</span>, size: 50 },
+    { id: 'id_cert_serv', header: 'ID', cell: ({ row }) => <span className="text-gray-500 text-xs">{row.original.data.id_cert_serv ?? '—'}</span>, size: 50 },
     {
       id: 'id_agente',
       accessorFn: row => row.data.id_agente,
@@ -404,19 +405,23 @@ export default function CertServPage() {
         />
       )}
 
-      {popupRow && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={closePopup}>
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="p-6 space-y-4">
+      <ModalShell
+        open={!!popupRow}
+        onClose={closePopup}
+        overlayClassName="flex items-center justify-center bg-black/40"
+        panelClassName="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto"
+      >
+        {popupRow && (
+          <div className="p-6 space-y-4">
               <div className="flex justify-between items-center">
                 <h3 className="font-bold text-lg text-gray-800">Certificación de Servicios</h3>
-                <button onClick={closePopup} className="text-gray-500 hover:text-gray-700 text-xl leading-none">&times;</button>
+                <button onClick={closePopup} className="text-gray-500 hover:text-gray-700 text-xl leading-none transition-colors">&times;</button>
               </div>
 
-              <div className="flex gap-2">
-                <button onClick={copyText} className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium px-3 py-1.5 rounded">Copiar</button>
-                <button onClick={() => { setEditingText(!editingText); setEditingFecha(false); }} className="bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-medium px-3 py-1.5 rounded">{editingText ? 'Cerrar edición' : 'Editar texto'}</button>
-                <button onClick={() => { setEditingFecha(!editingFecha); setEditingText(false); }} className="bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-medium px-3 py-1.5 rounded">{editingFecha ? 'Cerrar fecha' : 'Editar fecha'}</button>
+              <div className="flex gap-2 flex-wrap">
+                <button onClick={copyText} className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium px-3 py-1.5 rounded transition-colors">Copiar</button>
+                <button onClick={() => { setEditingText(!editingText); setEditingFecha(false); }} className="bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-medium px-3 py-1.5 rounded transition-colors">{editingText ? 'Cerrar edición' : 'Editar texto'}</button>
+                <button onClick={() => { setEditingFecha(!editingFecha); setEditingText(false); }} className="bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-medium px-3 py-1.5 rounded transition-colors">{editingFecha ? 'Cerrar fecha' : 'Editar fecha'}</button>
               </div>
 
               {editingFecha && (
@@ -449,9 +454,8 @@ export default function CertServPage() {
                 </pre>
               )}
             </div>
-          </div>
-        </div>
-      )}
+        )}
+      </ModalShell>
     </div>
   );
 }

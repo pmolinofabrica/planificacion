@@ -5,8 +5,10 @@ import { useTablero } from '../hooks/useTablero';
 import { UserSelector } from '../components/tablero/UserSelector';
 import { TableroBoard } from '../components/tablero/TableroBoard';
 import { NuevaTarjetaDialog } from '../components/tablero/NuevaTarjetaDialog';
+import { Card } from '../components/ui/Card';
 import { STORAGE_USER_KEY } from '../types/tablero';
 import type { TableroUser, TableroTipo } from '../types/tablero';
+import { notify } from '../lib/feedback';
 
 export default function TableroPage() {
   const navigate = useNavigate();
@@ -31,17 +33,17 @@ export default function TableroPage() {
 
   const handleCrearTarjeta = async (titulo: string, descripcion: string, tipo: TableroTipo, autor: TableroUser) => {
     const { error } = await crearItem(titulo, descripcion, tipo, autor);
-    if (error) alert(`Error al crear: ${error}`);
+    if (error) notify(`Error al crear: ${error}`, 'error');
   };
 
   const handleUpdateItem = async (id: number, titulo: string, descripcion: string, tipo: TableroTipo) => {
     const { error } = await updateItem(id, { titulo, descripcion, tipo });
-    if (error) alert(`Error al editar: ${error}`);
+    if (error) notify(`Error al editar: ${error}`, 'error');
   };
 
   const handleDeleteItem = async (id: number) => {
     const { error } = await deleteItem(id);
-    if (error) alert(`Error al eliminar: ${error}`);
+    if (error) notify(`Error al eliminar: ${error}`, 'error');
   };
 
   const isDev = currentUser === 'Pablo';
@@ -49,7 +51,7 @@ export default function TableroPage() {
   return (
     <div className="min-h-screen bg-surface text-on-surface font-body flex flex-col">
       <header className="bg-surface-container-low border-b border-outline-variant/20 px-4 sm:px-6 py-3 flex flex-col gap-3 sticky top-0 z-20">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigate('/')}
@@ -64,7 +66,7 @@ export default function TableroPage() {
               </div>
               <div>
                 <h1 className="text-base sm:text-lg font-bold text-on-surface font-headline">Tablero</h1>
-                <p className="text-[10px] text-on-surface-variant font-medium -mt-0.5">
+                <p className="text-xs text-on-surface-variant font-medium -mt-0.5">
                   {items.length} {items.length === 1 ? 'tarjeta' : 'tarjetas'}
                 </p>
               </div>
@@ -83,10 +85,10 @@ export default function TableroPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 pb-0.5">
+        <div className="flex flex-wrap items-center gap-1.5 pb-0.5">
           <button
             onClick={() => setFilterTipo('todas')}
-            className={`px-3 py-1 rounded-md text-[11px] font-bold font-headline transition-all border uppercase tracking-wider ${
+            className={`px-3 py-1.5 rounded-md text-xs font-bold font-headline transition-all border uppercase tracking-wider whitespace-nowrap ${
               filterTipo === 'todas'
                 ? 'bg-primary text-on-primary border-primary shadow-sm'
                 : 'bg-surface-container-high text-on-surface-variant border-outline-variant/20 hover:bg-surface-container-highest hover:text-on-surface'
@@ -98,7 +100,7 @@ export default function TableroPage() {
             <button
               key={t}
               onClick={() => setFilterTipo(t)}
-              className={`px-3 py-1 rounded-md text-[11px] font-bold font-headline transition-all border uppercase tracking-wider ${
+              className={`px-3 py-1.5 rounded-md text-xs font-bold font-headline transition-all border uppercase tracking-wider whitespace-nowrap ${
                 filterTipo === t
                   ? 'bg-primary text-on-primary border-primary shadow-sm'
                   : 'bg-surface-container-high text-on-surface-variant border-outline-variant/20 hover:bg-surface-container-highest hover:text-on-surface'
@@ -110,7 +112,7 @@ export default function TableroPage() {
           {isDev && (
             <button
               onClick={refresh}
-              className="ml-auto px-2.5 py-1 rounded-md text-[10px] font-bold font-headline border border-outline-variant/20 bg-surface-container-high text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface transition-all uppercase tracking-wider"
+              className="ml-auto px-3 py-1.5 rounded-md text-xs font-bold font-headline border border-outline-variant/20 bg-surface-container-high text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface transition-all uppercase tracking-wider whitespace-nowrap"
             >
               🔄 Refrescar
             </button>
@@ -132,7 +134,7 @@ export default function TableroPage() {
             onAddComment={async (itemId, contenido) => {
               if (!currentUser) return;
               const { error } = await agregarComentario(itemId, currentUser, contenido);
-              if (error) alert(`Error al comentar: ${error}`);
+              if (error) notify(`Error al comentar: ${error}`, 'error');
             }}
             onUpdateItem={handleUpdateItem}
             onDeleteItem={handleDeleteItem}
@@ -141,19 +143,21 @@ export default function TableroPage() {
         )}
       </div>
 
-      {!currentUser && !loading && (
-        <div className="fixed inset-0 bg-black/10 backdrop-blur-[2px] z-10 flex items-center justify-center pointer-events-none">
-          <div className="bg-surface-container-lowest border border-outline-variant/20 rounded-2xl p-6 shadow-lg pointer-events-auto max-w-sm text-center mx-4">
-            <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mx-auto mb-3">
-              <ClipboardList className="w-6 h-6 text-primary" />
-            </div>
-            <h3 className="text-sm font-bold text-on-surface mb-1 font-headline">Seleccioná tu usuario</h3>
-            <p className="text-xs text-on-surface-variant leading-relaxed">
-              Elegí quién sos en el selector de arriba para empezar a usar el tablero.
-            </p>
+      <div
+        className={`fixed inset-0 bg-black/10 backdrop-blur-[2px] z-10 flex items-center justify-center pointer-events-none transition-[opacity,visibility] duration-300 ${
+          currentUser || loading ? 'invisible opacity-0' : 'visible opacity-100'
+        }`}
+      >
+        <Card className="rounded-2xl p-6 shadow-lg pointer-events-auto max-w-sm text-center mx-4">
+          <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mx-auto mb-3">
+            <ClipboardList className="w-6 h-6 text-primary" />
           </div>
-        </div>
-      )}
+          <h3 className="text-sm font-bold text-on-surface mb-1 font-headline">Seleccioná tu usuario</h3>
+          <p className="text-xs text-on-surface-variant leading-relaxed">
+            Elegí quién sos en el selector de arriba para empezar a usar el tablero.
+          </p>
+        </Card>
+      </div>
 
       <NuevaTarjetaDialog
         key={`${currentUser}-${showNewDialog}`}

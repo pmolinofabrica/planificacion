@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabase';
+import { notify } from '../../lib/feedback';
 import { ArrowLeftRight, User, Calendar, CheckCircle } from 'lucide-react';
+import { Button } from '../ui/Button';
 
 interface Agente {
   id_agente: number;
@@ -121,7 +123,7 @@ export default function FormSolicitudCambio() {
         p_secuencia: 1,
       });
       if (error) {
-        alert('Error al guardar: ' + (error.message || JSON.stringify(error)));
+        notify('Error al guardar: ' + (error.message || JSON.stringify(error)), 'error');
         return;
       }
 
@@ -141,7 +143,7 @@ export default function FormSolicitudCambio() {
         err?.error_description ||
         err?.error ||
         (typeof err === 'object' ? JSON.stringify(err) : String(err));
-      alert('Error al guardar: ' + msg);
+      notify('Error al guardar: ' + msg, 'error');
     } finally {
       setSending(false);
     }
@@ -322,29 +324,29 @@ export default function FormSolicitudCambio() {
       {/* Actions */}
       <div className="flex justify-end gap-3">
         {step === 2 && (
-          <button
+          <Button
+            variant="outline"
             onClick={() => setStep(1)}
-            className="px-4 py-2 rounded-lg border border-outline-variant/30 text-sm font-medium hover:bg-outline-variant/10 transition-colors"
           >
             Volver
-          </button>
+          </Button>
         )}
         {step === 1 ? (
-          <button
+          <Button
+            variant="primary"
             onClick={() => setStep(2)}
             disabled={!agenteOrigen || !agenteDestino || !convOrigen || !convDestino}
-            className="px-4 py-2 rounded-lg bg-primary text-on-primary text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
           >
             Continuar
-          </button>
+          </Button>
         ) : (
-          <button
+          <Button
+            variant="primary"
             onClick={handleSubmit}
             disabled={sending}
-            className="px-4 py-2 rounded-lg bg-primary text-on-primary text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
           >
             {sending ? 'Guardando...' : 'Crear solicitud'}
-          </button>
+          </Button>
         )}
       </div>
     </div>

@@ -5,6 +5,7 @@ import { TIPO_CONFIG, ESTADO_COLUMNS } from '../../types/tablero';
 import type { TableroItem, TableroUser, TableroEstado, TableroComentario, TableroTipo } from '../../types/tablero';
 import { CommentThread } from './CommentThread';
 import { NuevaTarjetaDialog } from './NuevaTarjetaDialog';
+import { confirmDialog } from '../../lib/feedback';
 
 const ICON_MAP = { Inbox, PlayCircle, MessageCircle, CheckCircle2, Archive };
 
@@ -38,11 +39,16 @@ export function TarjetaDetailModal({
     day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
   });
 
-  const handleDelete = () => {
-    if (confirm('Eliminar "' + item.titulo + '"?')) {
-      onDeleteItem(item.id);
-      onClose();
-    }
+  const handleDelete = async () => {
+    const ok = await confirmDialog({
+      title: 'Eliminar tarjeta',
+      message: `¿Eliminar "${item.titulo}"?`,
+      confirmLabel: 'Eliminar',
+      danger: true,
+    });
+    if (!ok) return;
+    onDeleteItem(item.id);
+    onClose();
   };
 
   return (
@@ -86,7 +92,7 @@ export function TarjetaDetailModal({
 
             <div>
               <label className="text-xs font-bold text-on-surface-variant mb-2 block font-headline uppercase tracking-wider">Estado</label>
-              <div className="grid grid-cols-5 gap-1.5">
+              <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
                 {ESTADO_COLUMNS.map((col) => {
                   const active = item.estado === col.estado;
                   const canMove = isDev(currentUser) && !active;
@@ -102,7 +108,7 @@ export function TarjetaDetailModal({
                       key={col.estado}
                       onClick={() => canMove && onUpdateEstado(item.id, col.estado)}
                       disabled={!canMove}
-                      className={'flex flex-col items-center gap-1 py-2 px-1 rounded-lg text-[10px] font-bold font-headline transition-all border ' + btnClass}
+                      className={'flex flex-col items-center gap-1 py-2 px-1 rounded-lg text-xs font-bold font-headline transition-all border ' + btnClass}
                     >
                       <Icon className={'w-4 h-4 ' + (active ? 'text-primary' : '')} />
                       <span className="leading-tight text-center">{col.shortLabel}</span>
@@ -111,7 +117,7 @@ export function TarjetaDetailModal({
                 })}
               </div>
               {!isDev(currentUser) && (
-                <p className="text-[10px] text-on-surface-variant/70 mt-1.5 text-center">
+                <p className="text-xs text-on-surface-variant/70 mt-1.5 text-center">
                   Solo Pablo puede cambiar el estado
                 </p>
               )}

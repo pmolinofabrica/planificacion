@@ -99,7 +99,7 @@ export default function PlanificacionPage() {
   }, [fetchData]);
 
   const columns = useMemo<ColumnDef<TrackedRow<Planificacion>>[]>(() => [
-    { id: 'id_plani', header: 'ID', cell: ({ row }) => <span className="text-gray-400 text-xs">{row.original.data.id_plani || '—'}</span>, size: 50 },
+    { id: 'id_plani', header: 'ID', cell: ({ row }) => <span className="text-gray-500 text-xs">{row.original.data.id_plani || '—'}</span>, size: 50 },
     editableColumn<Planificacion>('id_dia', 'Día', 'select', diasOptions),
     editableColumn<Planificacion>('id_turno', 'Turno', 'select', turnosOptions),
     editableColumn<Planificacion>('cant_residentes_plan', 'Cupo Plani', 'number'),
@@ -143,7 +143,7 @@ export default function PlanificacionPage() {
         <div>
           <h2 className="text-xl font-bold text-gray-800">Planificación Base</h2>
         </div>
-        <div className="flex gap-2 items-center">
+        <div className="flex gap-2 flex-wrap items-center">
           <select 
             value={filtroMes} 
             onChange={(e) => setFiltroMes(Number(e.target.value))}
